@@ -1,0 +1,6 @@
+# Check out every text file with LF line endings, also on Windows with
+# core.autocrlf=true: the csh scripts (run, run_extra) stop working with CRLF.
+* text=auto eol=lf
+*.bz2 binary
+*.zip binary
+*.pdf binary
