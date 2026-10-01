@@ -1,7 +1,7 @@
 # COSC 6385 Assignment 1: Pentium M hybrid branch direction predictor
 
-This repository implements the branch direction predictor asked for in
-[the assignment](branch-prediction/programming-branch-predictor.pdf): a hybrid of a
+This repository implements the branch direction predictor asked for in Assignment 1
+(handout `programming-branch-predictor.pdf`, not included here): a hybrid of a
 bimodal predictor and a tagged, set-associative global predictor modeled on the
 Pentium M. It is written as the `pm_predictor` class of the CBP2 branch prediction
 framework and evaluated on the framework's 20 traces.
@@ -16,7 +16,6 @@ Main result: **7.758 MPKI** averaged over the 20 traces (bimodal predictor alone
 README.md                       this file
 REPORT.md                       the report
 branch-prediction/
-  programming-branch-predictor.pdf      the assignment
   cbp2-infrastructure-v2/               CBP2 framework with our predictor
     src/my_predictor.h          pm_predictor (our code); gshare_predictor and cpm_predictor came with the framework
     src/test_pm.cc              our tests: replay of the PDF's worked example, LRU and counter checks
@@ -27,9 +26,6 @@ branch-prediction/
     mutants_test_pm.py          checks that test_pm fails for deliberately broken predictors
     results/                    raw outputs, one file per configuration
     traces/                     the 20 CBP2 traces, unchanged
-  assignment-explained.md, completion-plan.md   working notes (in Chinese)
-  cbp2-infrastructure-v2.zip, milenkovic_WDDD02.pdf   course downloads, not needed to build or run
-branch-prediction.zip           course download, not needed to build or run
 ```
 
 Everything else in `cbp2-infrastructure-v2/` (`trace.cc`, `trace.h`, `branch.h`,
@@ -115,11 +111,11 @@ of flags), runs `csh ./run traces`, and finally rebuilds the default predictor.
 | `S_ctr_init1.txt` | R1 with all counters starting at 1 instead of 2 | `-DPM_CTR_INIT=1` |
 | `stats_pm_4way.txt`, `stats_pm_2way.txt` | R1 / R2 with diagnostic counters, one line per trace | `-DPM_STATS` (and `-DPM_WAYS=2`) |
 
-B0 comes from the skeleton `my_predictor.h` of the first commit:
+B0 comes from the skeleton `my_predictor.h` of the repository's first commit:
 
 ```bash
 cd branch-prediction/cbp2-infrastructure-v2
-git show 24ff250:branch-prediction/cbp2-infrastructure-v2/src/my_predictor.h > src/my_predictor.h
+git show $(git rev-list --max-parents=0 HEAD):branch-prediction/cbp2-infrastructure-v2/src/my_predictor.h > src/my_predictor.h
 (cd src && make -B) && csh ./run traces > results/B0_always_taken.txt
 git checkout src/my_predictor.h && (cd src && make -B)
 ```

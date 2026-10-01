@@ -3,3 +3,11 @@ branch-prediction/cbp2-infrastructure-v2/src/predict
 branch-prediction/cbp2-infrastructure-v2/src/predict_extra_credit
 branch-prediction/cbp2-infrastructure-v2/src/test_pm
 branch-prediction/cbp2-infrastructure-v2/src/test_pm4
+
+# course files and working notes: kept in the local checkout, not part of the submission
+branch-prediction.zip
+branch-prediction/cbp2-infrastructure-v2.zip
+branch-prediction/programming-branch-predictor.pdf
+branch-prediction/milenkovic_WDDD02.pdf
+branch-prediction/completion-plan.md
+branch-prediction/assignment-explained.md

@@ -11,6 +11,8 @@ the bimodal table alone and 86.311 for always predicting taken.
 Build and run instructions are in [README.md](README.md). All numbers below come from the
 files in [`results/`](branch-prediction/cbp2-infrastructure-v2/results/); the tables were
 printed by [`report_tables.py`](branch-prediction/cbp2-infrastructure-v2/report_tables.py).
+Page numbers ("PDF page 2", "appendix") refer to the assignment handout
+(`programming-branch-predictor.pdf`, 11 pages), which is not included in this repository.
 
 ## 1. What was built
 
@@ -390,9 +392,9 @@ compared with the 7.7 to 24.6 million conditional branches of each trace.
 
 ## 8. References and reused code
 
-1. Assignment 1: Branch Predictor Implementation, COSC 6385
-   ([`programming-branch-predictor.pdf`](branch-prediction/programming-branch-predictor.pdf)),
-   including the worked example in Appendix B (pages 5-11).
+1. Assignment 1: Branch Predictor Implementation, COSC 6385 (handout
+   `programming-branch-predictor.pdf`), including the worked example in Appendix B
+   (pages 5-11).
 2. V. Uzelac and A. Milenković, "Experiment Flows and Microbenchmarks for Reverse Engineering
    of Branch Predictor Structures," IEEE International Symposium on Performance Analysis of
    Systems and Software (ISPASS), 2009.
