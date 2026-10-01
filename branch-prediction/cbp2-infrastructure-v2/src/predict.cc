@@ -14,6 +14,12 @@
 #include "predictor.h"
 #include "my_predictor.h"
 
+// the predictor class to simulate; -DPREDICTOR=gshare_predictor runs the
+// sample gshare predictor instead (baseline for the report)
+#ifndef PREDICTOR
+#define PREDICTOR pm_predictor
+#endif
+
 int main (int argc, char *argv[]) {
 
 	// make sure there is one parameter
@@ -29,7 +35,7 @@ int main (int argc, char *argv[]) {
 
 	// initialize competitor's branch prediction code
 
-	branch_predictor *p = new pm_predictor ();
+	branch_predictor *p = new PREDICTOR ();
 
 	// some statistics to keep, currently just for conditional branches
 
