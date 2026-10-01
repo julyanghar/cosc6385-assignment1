@@ -51,9 +51,9 @@ public:
 
 //
 // Pentium M hybrid branch predictors
-// This class implements a simple hybrid branch predictor based on the Pentium M branch outcome prediction units.
-// Instead of implementing the complete Pentium M branch outcome predictors, the class below implements a hybrid
-// predictor that combines a bimodal predictor and a global predictor.
+// This class implements a simple hybrid branch predictor based on the Pentium M branch outcome prediction units. 
+// Instead of implementing the complete Pentium M branch outcome predictors, the class below implements a hybrid 
+// predictor that combines a bimodal predictor and a global predictor. 
 //
 // Bimodal: 2-bit counters indexed by the low PC bits.
 // Global:  set-associative table of {valid, tag, 2-bit counter}, LRU replacement.

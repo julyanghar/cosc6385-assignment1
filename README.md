@@ -133,7 +133,7 @@ The framework and the 20 traces are the CBP2 branch prediction infrastructure
 (`cbp2-infrastructure-v2`) by Daniel A. Jiménez, as distributed on the course website.
 The same `cbp2-infrastructure-v2.tar` is on
 <https://people.engr.tamu.edu/djimenez/taco/utsa-www/cs5513/competition/>.
-The traces are committed unchanged (7.4 MB), so `run` works right after cloning.
+The traces are committed unchanged (7.7 MB in total), so `run` works right after cloning.
 
 `.gitattributes` makes Git check out text files with LF line endings on every platform:
 with CRLF endings (for example Git on Windows with `core.autocrlf=true`) the csh scripts
