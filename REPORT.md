@@ -1,55 +1,72 @@
 # Report: Pentium M hybrid branch direction predictor
 
-**Summary.** We implemented the branch direction (taken / not taken) part of the Pentium M
-predictor as the `pm_predictor` class of the CBP2 framework: a bimodal table plus a tagged,
-set-associative global table whose prediction wins whenever it hits. Built as the tiny
-predictor of the assignment's worked example, the same code reproduces all 22 rows of the
-appendix tables, including every table state. On the 20 CBP2 traces the main configuration
-(4-way global table, 3.75 KiB of state) reaches **7.758 MPKI** on average, against 10.267 for
-the bimodal table alone and 86.311 for always predicting taken.
+## TL;DR
 
-Build and run instructions are in [README.md](README.md). All numbers below come from the
-files in [`results/`](branch-prediction/cbp2-infrastructure-v2/results/); the tables were
+We built a branch direction predictor in the CBP2 framework. It predicts whether a branch
+will be taken or not taken. It combines two tables: bimodal and global. When the global
+table has a matching entry, we use its prediction. Otherwise, we use the bimodal prediction.
+
+The code matches all 22 rows of the assignment's worked example, including the table states.
+On the 20 course traces, our main model has an average of **7.758 MPKI**. Lower is better.
+The bimodal table alone gives 10.267 MPKI. Always predicting taken gives 86.311 MPKI.
+The main model needs about **3.75 KiB of hardware state** if its fields are packed into bits.
+The C++ program uses more memory because it stores the fields in byte arrays.
+These results measure prediction errors. They do not measure CPU speed or power use.
+
+## Contents
+
+- [1. What was built](#1-what-was-built)
+- [2. Parameters and storage](#2-parameters-and-storage)
+- [3. Prediction and update rules](#3-prediction-and-update-rules)
+- [4. Verification](#4-verification)
+- [5. Results](#5-results)
+- [6. Analysis](#6-analysis)
+- [7. Omissions and deviations](#7-omissions-and-deviations)
+- [8. References and reused code](#8-references-and-reused-code)
+
+Build and run instructions are in [README.md](README.md). All trace measurements below come from the
+files in [`results/`](branch-prediction/cbp2-infrastructure-v2/results/); the result tables were
 printed by [`report_tables.py`](branch-prediction/cbp2-infrastructure-v2/report_tables.py).
 Page numbers ("PDF page 2", "appendix") refer to the assignment handout
 (`programming-branch-predictor.pdf`, 11 pages), which is not included in this repository.
 
 ## 1. What was built
 
-The code is in [`src/my_predictor.h`](branch-prediction/cbp2-infrastructure-v2/src/my_predictor.h)
-(class `pm_predictor` and its parameters, about 180 lines). For every conditional branch:
+The code is in [`pm_predictor`](branch-prediction/cbp2-infrastructure-v2/src/my_predictor.h#L107).
+A conditional branch chooses whether to jump based on a condition. Our predictor makes
+that choice before it sees the true result.
 
-```text
-   branch address PC                          GHR: outcomes of the last 15 conditional
-          |                                   branches before this one, newest in bit 0
-          +-------------------------+                      |
-          |                         |                      |
-          v                         v                      v
-      PC[11:0]                  PC[14:0] ------ XOR ----- GHR[14:0]
-          |                                      |
-          v                                      v
-  +----------------+                 HASH: set = HASH[14:6], tag = HASH[5:0]
-  | Bimodal table  |                             |
-  | 4096 x 2-bit   |                             v
-  | counters       |          +----------------------------------------------+
-  +----------------+          | Global table: 512 sets x 4 ways              |
-          |                   | each way: valid bit, 6-bit tag,              |
-          |                   |           2-bit counter, LRU age             |
-          |                   +----------------------------------------------+
-          |                       |                               |
-          |              counter of the hit way         hit = some valid way of the
-          |                       |                           set holds the same tag
-          v                       v                               |
-   bimodal prediction      global prediction                     |
-          |                       |                               |
-          +---------> [ hit ? global : bimodal ] <----------------+
-                                  |
-                           final prediction
+The bimodal table uses the branch address, called PC. It learns whether branches at that
+table entry tend to be taken. The global table also uses the recent results of conditional
+branches. We keep those results in the global history register, called GHR.
+
+The global table has 512 groups, called sets. Each set has four entries, called ways.
+Each entry has a tag, which is a short value used to check for a match. An entry must be
+valid and have the right tag to count as a hit. A hit means a match was found; it does not
+mean the prediction is correct. The diagram shows how the two tables work together:
+
+```mermaid
+%%{init: {"theme": "neutral", "flowchart": {"look": "classic", "wrappingWidth": 320, "htmlLabels": false, "rankSpacing": 20, "nodeSpacing": 28}}}%%
+flowchart TD
+    PC["Branch address PC"]
+    GHR["GHR: last 15 conditional outcomes<br/>Newest outcome in bit 0"]
+    PC -->|"PC[11:0]"| BIM["Bimodal table<br/>4096 x 2-bit counters"]
+    PC -->|"PC[14:0]"| HASH["HASH = PC[14:0] XOR GHR<br/>Set = HASH[14:6], tag = HASH[5:0]"]
+    GHR --> HASH
+    HASH --> GLOBAL["Global table: 512 sets x 4 ways<br/>Each entry: valid bit, 6-bit tag,<br/>2-bit counter, and LRU age"]
+    GLOBAL --> HIT{"Valid entry with<br/>matching tag?"}
+    HIT -->|Yes| GP["Use the matching global counter"]
+    HIT -->|No| BP["Use the bimodal counter"]
+    BIM --> BP
+    GP --> PRED["Final prediction<br/>Counter 0 or 1: NT<br/>Counter 2 or 3: T"]
+    BP --> PRED
 ```
 
-A 2-bit counter predicts taken when its value is 2 or 3. After the outcome is known, the
-counters are trained (saturating at 0 and 3), a global miss allocates a way, and the outcome is
-shifted into the GHR. Section 3 lists the exact rules.
+In the diagram, `PC[11:0]` means the lowest 12 bits of the address. Each 2-bit counter
+holds one of four values: 0, 1, 2, or 3. Values 0 and 1 predict not taken. Values 2 and 3
+predict taken. After the true result is known, taken adds 1 and not taken subtracts 1.
+The value stays within 0 to 3. We also fill a global entry on a miss and add the result
+to the GHR. Section 3 gives the full update rules.
 
 Not built: the loop predictor, the path information register (PIR) and its hash, and branch
 target prediction, which the assignment allows to skip (PDF page 2); see section 7. No
@@ -57,9 +74,10 @@ third-party cache code was used: the global table is a set of plain two-dimensio
 
 ## 2. Parameters and storage
 
-All sizes are compile-time macros (`PM_BIM_BITS`, `PM_PC_SHIFT`, `PM_SET_BITS`, `PM_TAG_BITS`,
-`PM_WAYS`, `PM_HIST_BITS`, `PM_CTR_INIT`). The defaults are the main configuration; the golden
-test (section 4) builds the same code with the parameters of the worked example.
+We set the sizes when we compile the code. The settings are `PM_BIM_BITS`, `PM_PC_SHIFT`,
+`PM_SET_BITS`, `PM_TAG_BITS`, `PM_WAYS`, `PM_HIST_BITS`, and `PM_CTR_INIT`.
+The default settings are the main model. The worked-example test uses the same code with
+smaller tables (section 4).
 
 | Parameter | Main configuration | Worked example (golden test) | Source |
 |---|---|---|---|
@@ -74,25 +92,29 @@ test (section 4) builds the same code with the parameters of the worked example.
 
 Notes on the choices:
 
-- **15-bit hash and history.** The page 2 figure XORs 15 bits of the instruction address with
-  the 15-bit PIR and takes set = HASH[14:6], tag = HASH[5:0]. The page 6 figure keeps
-  HASH[14:6] but draws a 14-bit BHR, which cannot produce bit 14. We use 15 bits of address
-  and 15 bits of history, so every set and tag bit depends on the history. This also matches
-  Uzelac and Milenković, who report a 15-bit PIR with PIR[14:6] as the global index and
-  PIR[5:0] as the tag (Sections 4.1 and 6.3 of the ISPASS 2009 paper).
-- **GHR instead of PIR.** The real Pentium M uses a path history, the PIR, built from
-  address bits of taken conditional branches and of indirect branches. The assignment does
-  not require the PIR (PDF page 2, "Highlights"); like the worked example, we use a history
-  of conditional branch outcomes.
-- **No address shift.** x86 instructions have variable length and branches can start at any
-  byte, and the page 2 figure indexes the bimodal table with IP[11:0]. The worked example uses
-  PC[5:2] only because it assumes 4-byte instructions and 8-bit addresses.
-- **4 ways.** The figures show a 4-way global table; the assignment allows 2 ways. Both are the
-  same code (`PM_WAYS`), so we use 4 ways and report 2 ways as a comparison (R2).
-- **Counter start value 2.** It affects only the first few predictions of each counter;
-  starting at 1 instead changes the average by 0.002 MPKI (section 6.4).
+- **15-bit hash and history.** A hash combines the address and history into one value.
+  We use XOR: each output bit is 1 when the two input bits differ. The page 2 figure uses
+  15 address bits and a 15-bit PIR. It takes set = HASH[14:6] and tag = HASH[5:0].
+  The page 6 figure still uses bit 14, but labels its history as only 14 bits.
+  We use 15 bits for both inputs, so history can affect every bit of the hash.
+  The ISPASS paper also reports a 15-bit PIR and the same set/tag bit split
+  (Sections 4.1 and 6.3).
+- **GHR instead of PIR.** The real Pentium M keeps path information in the PIR.
+  It uses address bits from taken conditional branches and indirect branches.
+  The assignment lets us skip this part (PDF page 2). We follow the worked example
+  and keep only the taken / not taken results of conditional branches.
+- **No address shift.** The page 2 figure uses IP[11:0] for the bimodal index.
+  We keep these low bits because x86 instructions can start at any byte address.
+  The small worked example instead uses PC[5:2] with 8-bit addresses.
+- **4 ways.** We use the four ways shown in the figures. The assignment also allows
+  two ways. We test that option by changing `PM_WAYS` (R2).
+- **Counter start value 2.** All counters start at 2, which predicts taken.
+  Starting at 1 changes the average by only 0.002 MPKI in our tests (section 6.4).
 
-Storage of the implementation (LRU kept as one age per way, `log2(ways)` bits each):
+The table below estimates the **hardware storage budget**. It counts the bits needed
+for each field. LRU means least recently used: when we need space, we replace the entry
+that has gone the longest without a use. We track this order with one age per way.
+Each age needs `log2(ways)` bits for the two-way and four-way models used here.
 
 | Structure | 4-way (R1), bits | 2-way (R2), bits |
 |---|---:|---:|
@@ -102,43 +124,51 @@ Storage of the implementation (LRU kept as one age per way, `log2(ways)` bits ea
 | GHR | 15 | 15 |
 | **Total** | **30,735 (3.75 KiB)** | **18,447 (2.25 KiB)** |
 
-For comparison, the framework's sample gshare (baseline B2) has 32,768 2-bit counters and a
-15-bit history: 65,551 bits (8.0 KiB), 2.13 times the 4-way pm.
+These totals are not the memory used by the C++ objects. The code stores each counter,
+tag, valid bit, and age in an `unsigned char`. The default model's arrays therefore use
+12,288 bytes. On our x86-64 build, `sizeof(pm_predictor)` is 12,328 bytes, including
+history, the saved prediction fields, and object overhead. This build has `PM_STATS` off.
+
+For comparison, the framework's sample gshare (B2) has 32,768 2-bit counters and a
+15-bit history. Its hardware budget is 65,551 bits (8.0 KiB), or 2.13 times R1.
+All storage comparisons below use this hardware bit count.
 
 ## 3. Prediction and update rules
 
-Sources: **PDF** = stated in the assignment text or figures; **appendix** = not stated in the
-text, but shown by the worked example (pages 7-11) and checked row by row by the golden test;
-**our choice** = not specified anywhere in the assignment.
+The source column separates three kinds of rules. **PDF** means the text or figure states
+the rule. **Appendix** means we read the rule from the worked example and checked its
+table states. **Our choice** means the assignment leaves that detail open.
 
 | # | Rule | Source |
 |---|---|---|
-| R1 | Only conditional branches are looked up, trained, or shifted into the GHR. Other branches are predicted taken and change no state (the driver scores only conditional branches). | **Our choice**, as in the framework's sample gshare. Uzelac and Milenković found that unconditional branches are not allocated in the Pentium M bimodal or global predictor (Section 6.4). |
-| R2 | A global hit means that some way of the selected set is valid and holds the same tag. On a hit the final prediction is that way's counter; otherwise it is the bimodal counter. | **PDF**: page 5 ("when global predictor delivers a hit, the final prediction will be determined by selecting the prediction from the global predictor") and the multiplexer in the page 6 figure. |
-| R3 | The bimodal counter is trained on every conditional branch, also when the final prediction came from the global table. | **Appendix**: row 6 is a global hit, yet bimodal counter 1 goes from 1 (row 6) to 2 (row 7) on page 9. |
-| R4 | On a global hit, the counter of the hit way is trained and that way becomes the most recently used. | **Appendix**: row 14 hits way 0 of set 0. On page 11 its counter goes from 1 to 0 (not taken) and the LRU bits of set 0 change from (way 0, way 1) = (1, 0) to (0, 1). |
-| R5 | On a global miss a way is always allocated, whether or not the final prediction was right: the least recently used way of the set gets valid = 1 and the new tag, and becomes the most recently used. | **Appendix**: rows 7 and 17 are global misses whose bimodal prediction was correct, and rows 8 and 18 show the new entry (set 1, tag 11). |
-| R6 | The allocated way keeps the counter value of the entry it replaces, and that value is then trained with the outcome. | **Appendix**: row 8 replaces way 0 of set 1, whose counter is 2; after the not-taken outcome, row 9 shows 1. |
+| R1 | Only conditional branches use or update the tables and GHR. Other branches are predicted taken and leave these fields unchanged. The driver scores only conditional branches. | **Our choice**, also used by the sample gshare. The ISPASS paper reports that unconditional branches get no entry in the Pentium M bimodal or global predictor (Section 6.4). |
+| R2 | A global hit needs a valid entry with the same tag in the chosen set. On a hit, use that entry's counter. On a miss, use the bimodal counter. | **PDF**: page 5 states that a global hit selects the global prediction. The page 6 figure shows the same rule. |
+| R3 | Update the bimodal counter after every conditional branch. Do this even when the global table supplied the final prediction. | **Appendix**: row 6 is a global hit. On page 9, bimodal counter 1 still changes from 1 in row 6 to 2 in row 7. |
+| R4 | On a global hit, update the matching counter. Mark that entry as the most recently used. | **Appendix**: row 14 hits way 0 of set 0. On page 11, its counter changes from 1 to 0. The LRU bits change from (1, 0) to (0, 1). |
+| R5 | On every global miss, select the least recently used entry. Set its valid bit to 1, write the new tag, and mark it as most recently used. Do this even if the bimodal prediction was correct. | **Appendix**: rows 7 and 17 are misses with correct bimodal predictions. Rows 8 and 18 show the new entry: set 1, tag 11. |
+| R6 | Keep the selected entry's old counter value. Then update that counter using the true result. Do not reset it when writing a new tag. | **Appendix**: row 8 replaces way 0 of set 1. Its counter is 2. After the not-taken result, row 9 shows 1. |
 | R7 | After the tables are trained, GHR = ((GHR << 1) \| outcome) & (2^L − 1), with L = 15 (4 in the example). | **Appendix**: GHR column (Col-4) of page 8, all 22 rows. |
-| R8 | Initially way 0 is the least recently used way of every set, so an empty set fills way 0, 1, 2, 3 in that order. | **Appendix**: page 10, row 1 (the LRU bit of way 0 is 1 in every set). |
+| R8 | Set the initial ages so that each empty set fills ways 0, 1, 2, 3 in order. | **Appendix**: page 10, row 1 starts with way 0 as the least recently used way in each two-way set. |
 
-R5 and R6 differ from two common alternatives, allocating only after a misprediction and
-resetting a new entry's counter to a weak state. We follow the worked example because it is
-the only specification of these details in the assignment, and we did not find the allocation
-policy of the global predictor stated in the ISPASS paper either. We did not evaluate the
-alternatives.
+R5 and R6 follow the worked example. Other designs might create an entry only after a
+wrong prediction, or reset its counter to a weak state. We did not test those choices.
+The assignment text does not give these details. We also did not find a rule for when to
+create global entries in the ISPASS paper.
 
-`predict()` computes the bimodal index, set, tag and hit way from the state before the branch
-and stores them in the `pm_update` object; `update()` uses these stored values and does not
-recompute them, because the GHR it would need has changed by then.
+`predict()` saves the bimodal index, global set, tag, and hit way in `pm_update`.
+`update()` uses those saved values to train the entries used for that prediction.
+The driver calls `update()` right after each prediction. The GHR is still unchanged when
+`update()` starts. It changes only at the end of `update()`, after the tables are trained.
 
 ## 4. Verification
 
 ### 4.1 Golden test: the worked example of the appendix
 
-[`src/test_pm.cc`](branch-prediction/cbp2-infrastructure-v2/src/test_pm.cc), built with the
-parameters of the worked example, loads the initial state shown in row 1 of pages 8-10 and
-feeds the 22 branches of page 7 (b1 = 0x44, b2 = 0x6C, b3 = 0x90). For every row it compares with the PDF:
+We compile [`src/test_pm.cc`](branch-prediction/cbp2-infrastructure-v2/src/test_pm.cc)
+with the small sizes used in the appendix. The test starts with the PDF's initial table
+values. It then feeds the first 22 branches of page 7 to the predictor. Their addresses
+are b1 = 0x44, b2 = 0x6C, and b3 = 0x90. These are the 22 rows shown on pages 8-11.
+For each row, the test checks:
 
 - before the branch: the GHR (page 8), all 16 bimodal counters (page 9), and every field of the
   global table, i.e. valid bit, tag, counter and LRU bit of both ways of all 4 sets (pages
@@ -146,9 +176,8 @@ feeds the 22 branches of page 7 (b1 = 0x44, b2 = 0x6C, b3 = 0x90). For every row
 - after `predict()`: the set and tag (page 8 Col-6), global hit or miss and the global
   prediction (Col-7), and the final prediction (Col-8).
 
-The expected values in the test were taken from the text of PDF pages 8-11; where these pages
-share a field (branch, outcome, set, tag, global hit, bimodal prediction), they agree with
-each other. Result:
+We copied the expected values from PDF pages 8-11. We also checked that the shared fields
+agree across those pages. The test prints:
 
 ```text
 appendix replay (PDF pages 7-11)
@@ -164,31 +193,31 @@ appendix replay (PDF pages 7-11)
   22/22 rows match the PDF
 ```
 
-On page 10-11 the "Prediction" column (Col-6) shows, on a miss, the counter of the way that is
-about to be replaced (for example "NT" in row 22 while the final prediction is T); the final
-prediction is in Col-8 of page 8, which is what the test compares.
+On a global miss, Col-6 on pages 10-11 shows the prediction of the entry about to be
+replaced. That is not the final prediction. For example, row 22 shows NT there, but the
+final prediction is T. The test reads the final prediction from Col-8 on page 8.
 
-### 4.2 Checks that hold for any configuration
+### 4.2 Counter, LRU, and branch checks
 
-The same test file, built with the tiny parameters and with the default 4-way parameters,
-also checks:
+We run these checks with both the small model and the default four-way model:
 
-- non-conditional branches (all flag combinations of the traces) are predicted taken and leave
-  the tables and the GHR unchanged (R1);
-- a counter at 0 stays 0 on not taken and a counter at 3 stays 3 on taken, for the bimodal and
-  the global table, through `predict()` / `update()`;
-- LRU: an empty set fills ways 0, 1, ..., W−1 in order; after using them in that order the
-  victim is way 0, and after using way 0 again it is way 1; the ages always stay a permutation
-  of 0..W−1. The same order is checked end to end through `predict()` / `update()` by filling
-  one set with W tags, reusing the first, and inserting one more: only the second tag is
-  replaced.
+- **Other branch types.** They are predicted taken. The tables and GHR stay unchanged (R1).
+- **Counter limits.** At 0, a not-taken result leaves the counter at 0. At 3, a taken
+  result leaves it at 3. We check both tables through `predict()` and `update()`.
+- **LRU order.** An empty set fills ways 0 through W−1 in order, where W is the number
+  of ways. Way 0 should then be replaced next. After using way 0 again, way 1 should be
+  replaced next. Each age from 0 to W−1 must appear exactly once in the set.
+- **LRU in a full prediction.** We fill one set with W tags, use the first tag again,
+  and add a new tag. Only the second tag should be replaced.
 
 Both builds print `all checks passed`.
 
 ### 4.3 The test detects wrong rules
 
-[`mutants_test_pm.py`](branch-prediction/cbp2-infrastructure-v2/mutants_test_pm.py) builds the
-test against deliberately broken copies of the predictor. Every one makes the test fail:
+Passing a test is more useful if the test can also catch mistakes.
+[`mutants_test_pm.py`](branch-prediction/cbp2-infrastructure-v2/mutants_test_pm.py)
+changes one rule at a time in a temporary copy of the predictor. It then runs the test
+on that copy. All eight wrong versions fail:
 
 | Broken rule | Appendix rows that still match | Other failed checks | test_pm exit code |
 |---|---:|---:|---:|
@@ -201,33 +230,46 @@ test against deliberately broken copies of the predictor. Every one makes the te
 | R2: bimodal used even on a global hit | 17/22 | 0 | 1 |
 | set and tag fields swapped | 0/22 | 2 | 1 |
 
-The R8 variant still matches all 22 rows because the replay sets its own initial LRU state
-(from page 10); the LRU checks of section 4.2 catch it.
+The wrong R8 version still matches the 22 appendix rows. That test loads its own initial
+LRU state from the PDF, so it cannot catch a wrong default age order. The separate LRU
+checks catch this mistake.
 
 ### 4.4 Consistency of the trace runs
 
 - Running `src/predict` on single traces (164.gzip, 256.bzip2, 300.twolf) prints the same
   values as the corresponding lines of `run`.
-- Running all configurations a second time gave a byte-identical `R1_pm_4way.txt`.
+- We repeated all ten prediction runs and both diagnostic runs. All 12 result files
+  matched the saved files byte for byte.
 - The `-DPM_STATS` builds print the same MPKI as R1 and R2 on every trace, and their
   misprediction counts reproduce those values.
-- The bimodal table is trained identically with or without the global table (R3), so B1 must
-  mispredict exactly on the global misses that pm mispredicts plus the global hits on which the
-  bimodal counter is wrong. The counters of both stats builds reproduce every B1 value this
-  way (checked in `report_tables.py` for all 20 traces).
+- B1 and pm update the bimodal table in the same way (R3). We can therefore count B1's
+  errors from the pm run: add the errors on global misses to the errors the bimodal
+  table would make on global hits. `report_tables.py` checks this against B1 for all
+  20 traces and both global table sizes. All values match.
 
 ## 5. Results
 
-Configurations (flags in [README.md](README.md#all-configurations-of-the-report)):
-**B0** the unmodified skeleton, which always predicts taken; **B1** `pm_predictor` without the
-global table; **B2** the framework's sample gshare (2.13 times the storage of R1);
-**R1** the main configuration; **R2** R1 with a 2-way global table.
+The compiler settings are in [README.md](README.md#all-configurations-of-the-report).
+We compare five models:
 
-MPKI is mispredicted conditional branch directions per 1000 instructions, where the driver
-counts every trace as 100 million instructions. Because all traces have this same
-denominator, the average MPKI is proportional to the total number of mispredictions over the
-20 traces, so ratios of averages are ratios of total mispredictions. The column "R1 vs B1" is
-(R1 − B1) / B1 of each row.
+- **B0:** the original skeleton. It always predicts taken.
+- **B1:** our predictor with only the bimodal table.
+- **B2:** the framework's sample gshare. It combines address and history to look up a
+  single counter table. Its hardware storage budget is 2.13 times R1's.
+- **R1:** our main model, with a four-way global table.
+- **R2:** the same model with a two-way global table.
+
+MPKI means wrong conditional-branch predictions per 1000 instructions. The driver uses
+100 million instructions for every trace:
+
+```text
+MPKI = 1000 × wrong conditional-branch predictions / 100,000,000
+```
+
+The denominator counts all instructions, not just branches. MPKI is not an error percentage.
+Each trace uses the same denominator. A reduction in average MPKI therefore gives the
+same relative reduction in total errors, apart from rounding. The column "R1 vs B1"
+uses `(R1 − B1) / B1 × 100%` for each row. A negative value means R1 has fewer errors.
 
 ### Table 1: MPKI per trace
 
@@ -257,11 +299,17 @@ denominator, the average MPKI is proportional to the total number of mispredicti
 
 ### Table 2: global hits and accuracy (from the `-DPM_STATS` builds)
 
-Definitions, per trace: *global hit rate* = global hits / conditional branches;
-*accuracy on hits, global / bimodal* = share of the global hits predicted correctly by the
-global counter (which pm uses) / by the bimodal counter (which pm ignores on a hit);
-*accuracy on misses* = share of the global misses predicted correctly (by the bimodal counter).
-The last row pools all conditional branches of the 20 traces.
+The rates in this table use these counts:
+
+- **Global hit rate:** global hits / conditional branches.
+- **Accuracy on hits, global / bimodal:** two separate accuracy values on the same set
+  of global hits. Each uses global hits as its denominator. The first counts correct
+  global predictions. The second counts correct bimodal predictions. On a hit, pm uses
+  only the global prediction.
+- **Accuracy on misses:** correct bimodal predictions on global misses / global misses.
+
+All rates are shown as percentages. The last row adds the counts across all 20 traces
+before computing each rate.
 
 | Trace | conditional branches | 4-way: global hit rate | 4-way: accuracy on hits, global / bimodal | 4-way: accuracy on misses (bimodal) | 2-way: global hit rate | 2-way: accuracy on hits, global / bimodal |
 |---|---:|---:|---:|---:|---:|---:|
@@ -304,91 +352,104 @@ Counter start value 1 instead of 2: per-trace MPKI change from -0.029 to +0.036.
 
 ### 6.1 What the global table adds
 
-Adding the global table to the bimodal table lowers the average from 10.267 MPKI (B1) to
-7.758 MPKI (R1): 24.4% fewer mispredictions in total over the 20 traces. Both are far below
-always predicting taken (86.311 MPKI).
+Adding the global table lowers average MPKI from 10.267 (B1) to 7.758 (R1).
+This is a 24.4% drop relative to B1: `(10.267 − 7.758) / 10.267`.
+Both models make far fewer errors than always predicting taken (86.311 MPKI).
 
-Because the bimodal table is trained the same way in B1 and R1 (rule R3, confirmed in section
-4.4), the two predictors make the same predictions on every global miss. The whole difference
-comes from the global hits, where R1 follows the global counter instead of the bimodal one:
+B1 and R1 update their bimodal tables in the same way (R3 and section 4.4).
+They make the same prediction on every global miss. They can differ only on a global hit,
+when R1 uses the global counter:
 
 ```text
 mispredictions(R1) − mispredictions(B1)
     = (hits where the global counter is wrong) − (hits where the bimodal counter is wrong)
 ```
 
-So the global table helps exactly on the traces where, on the hits, the global counters are
-more accurate than the bimodal counters (Table 2). With 4 ways this holds on 18 of the 20
-traces. The gains are largest where the global counters are much better than the bimodal ones
-on most branches: 252.eon (97.49% vs 87.39% on hits, 93.4% hit rate; 9.443 → 2.148 MPKI,
-−77.3%), 202.jess (−77.2%), 254.gap (−55.6%), and 181.mcf with the largest absolute drop
-(33.271 → 18.269 MPKI). Where the bimodal counters are already about as accurate as the global
-ones on the hits, the gain is small, e.g. 256.bzip2 (99.97% for both; 0.113 → 0.112 MPKI) and
-205.raytrace (97.43% vs 97.33%; −2.9%).
+The global table helps when its counters are more accurate than the bimodal counters
+on those hits. This happens on 18 of the 20 traces for R1 (Table 2).
 
-On two traces the global table makes things worse: 175.vpr (+8.8%) and 300.twolf (+13.1%).
-There the global counters are less accurate on the hits than the bimodal counters would have
-been: 88.03% vs 89.44% on 175.vpr and 80.97% vs 85.53% on 300.twolf. 300.twolf also has by far
-the lowest global hit rate (48.1%). Since a hit always overrides the bimodal prediction,
-these less accurate hits cost 1.295 MPKI on 175.vpr and 2.874 MPKI on 300.twolf. We did not
-test why the hit accuracy is low on these traces. A possible cause, given the low hit rate, is
-that many (address, history) combinations compete for the 2048 entries, so many hits find an
-entry that was allocated recently with a counter inherited from another branch (rule R6).
+For example, 252.eon has a global hit on 93.4% of its conditional branches.
+On those hits, global accuracy is 97.49%, while bimodal accuracy is 87.39%.
+Its MPKI falls from 9.443 to 2.148, a 77.3% drop relative to B1.
+Other large drops are 77.2% on 202.jess and 55.6% on 254.gap, also relative to B1.
+The largest absolute drop is on 181.mcf: 33.271 to 18.269 MPKI.
+
+When both tables are about as accurate on global hits, the gain is small.
+On 256.bzip2, both hit accuracies round to 99.97%; MPKI changes from 0.113 to 0.112.
+On 205.raytrace, the hit accuracies are 97.43% and 97.33%; MPKI falls by 2.9% relative to B1.
+
+The global table makes two traces worse. Compared with B1, MPKI rises by 8.8% on 175.vpr
+and 13.1% on 300.twolf. On their global hits, the global counter is less accurate than
+the bimodal counter: 88.03% versus 89.44% for 175.vpr, and 80.97% versus 85.53% for 300.twolf.
+The fixed hit rule still selects the global prediction. The added errors amount to
+1.295 and 2.874 MPKI, using the unrounded diagnostic counts.
+
+We did not test why these global predictions are worse. One possible cause is frequent
+entry replacement: many address/history combinations share only 2048 entries, and a
+replaced entry keeps its old counter (R6). This is a possible explanation, not a measured
+cause. The low global hit rate on 300.twolf (48.1%) alone does not prove it.
 
 ### 6.2 4-way versus 2-way global table
 
-The 2-way table (R2) averages 8.660 MPKI, so the 4-way table has 10.4% fewer mispredictions in
-total, at 1.67 times the storage (30,735 vs 18,447 bits). R2 is worse than R1 on 19 of the 20
-traces. With half the ways, the global hit rate over all conditional branches falls from 87.5%
-to 74.0%, and the global counters lose their advantage on more traces: on the hits of 10 of the
-20 traces they are less accurate than the bimodal counters (Table 2, last column), and on
-exactly these 10 traces R2 has a higher MPKI than B1 (Table 1). R2 still beats B1 on average
-(8.660 vs 10.267 MPKI) because of the large gains on traces such as 181.mcf, 202.jess and
-252.eon.
+The two-way model (R2) averages 8.660 MPKI. The four-way model reduces this by 10.4%,
+using R2 as the baseline: `(8.660 − 7.758) / 8.660`. It uses 1.67 times the hardware
+storage (30,735 / 18,447 bits). R1 has fewer errors on 19 of the 20 traces.
 
-The one trace where 2-way is better than 4-way is 300.twolf (24.239 vs 24.817 MPKI). This
-follows from the same accounting: on 300.twolf a global hit is less accurate than the bimodal
-counter, and the 2-way table hits on fewer branches (32.7% instead of 48.1%), so fewer
-predictions are overridden.
+With two ways, the global table has half as many entries. Its hit rate over all conditional
+branches drops from 87.5% to 74.0%. On 10 of the 20 traces, its global predictions on hits
+are less accurate than its bimodal predictions (Table 2). These are the same 10 traces
+where R2 has more errors than B1 (Table 1). R2 still has a lower average MPKI than B1
+(8.660 versus 10.267), with large gains on 181.mcf, 202.jess, and 252.eon.
+
+The two-way model does better on 300.twolf: 24.239 versus 24.817 MPKI.
+For both models, global predictions on hits are worse than bimodal predictions on those
+same hits. The two-way model uses global predictions on fewer conditional branches
+(32.7% versus 48.1%). The hit counts and the two accuracies in Table 2 together account
+for its smaller increase in errors over B1.
 
 ### 6.3 Comparison with the sample gshare
 
-The framework's sample gshare (B2) averages 6.305 MPKI and is better than R1 on all 20 traces.
-This is not a comparison at equal cost: B2 has 65,551 bits of state, 2.13 times R1. We did
-not run a gshare of R1's size, so these results do not tell whether the hybrid organization or
-the larger table explains the difference.
+The sample gshare (B2) averages 6.305 MPKI and has fewer errors than R1 on all 20 traces.
+It also has a larger hardware budget: 65,551 bits, or 2.13 times R1.
+We did not test gshare at R1's storage budget. We therefore cannot separate the effect
+of its design from the effect of its larger table.
 
 ### 6.4 History length and counter start value
 
-The average MPKI falls with every longer history we tried: 9.985 (8 bits), 9.047 (10), 8.486
-(12), 7.870 (14) and 7.758 (15 bits, R1). 15 bits is the longest history that the 15-bit hash
-can use. The best length differs per trace, however: on 9 of the 20 traces a history shorter
-than 15 bits gives a lower MPKI (300.twolf: 23.417 MPKI with 8 bits vs 24.817 with 15).
+Longer history gives lower average MPKI in our tests: 9.985 with 8 bits, 9.047 with 10,
+8.486 with 12, 7.870 with 14, and 7.758 with 15. Our hash uses only 15 bits.
+Adding history bits above that would not affect this hash.
 
-Starting all counters at 1 instead of 2 changes the average from 7.758 to 7.756 MPKI, and no
-trace by more than 0.036 MPKI. The start value is forgotten quickly: which counters are read
-and trained, and with which outcomes, does not depend on counter values, so in both runs each
-counter receives the same sequence of updates. Its values in the two runs differ by at most 1
-and become equal the first time an update pushes the counter against 0 or 3; counters are
-never reset afterwards (rule R6). The 6,144 counters (4,096 bimodal, 2,048 global) are few
-compared with the 7.7 to 24.6 million conditional branches of each trace.
+The best length still depends on the trace. On 9 of the 20 traces, a shorter history
+beats 15 bits. For example, 300.twolf gives 23.417 MPKI with 8 bits and 24.817 with 15.
+
+Starting the counters at 1 instead of 2 changes average MPKI from 7.758 to 7.756.
+No trace changes by more than 0.036 MPKI.
+
+The two runs read and update the same counters in the same order. The counter values
+do not control which entries we select or replace. Each pair of counters starts one
+apart and remains at most one apart. Once an update holds one at its limit and brings
+the other to that same limit, their values stay equal. We never reset a counter (R6).
+There are 6,144 counters: 4,096 bimodal and 2,048 global. Each trace has about 7.7 to
+24.6 million conditional branches. The measurements show that the start value has a
+small effect on these full trace runs; we did not measure how long each counter takes
+to reach the same value.
 
 ## 7. Omissions and deviations
 
-- **Not implemented**, as allowed by the assignment (PDF page 2): the loop predictor, the PIR
-  and its hash with the instruction address, and branch target prediction
-  (`target_prediction(0)`, as in the skeleton). The extra-credit `cpm_predictor` (complete
-  Pentium M unit) is not implemented.
-- **GHR instead of PIR.** The real predictor's history is a path history that also includes
-  indirect branches; ours records the outcomes of conditional branches only (rule R1).
-- **Figure inconsistency.** The page 6 figure draws a 14-bit BHR but indexes with HASH[14:6];
-  we use a 15-bit history and hash (section 2).
-- **Allocation and counter rules** follow the worked example (R5, R6). Alternatives such as
-  allocating only after a misprediction were not evaluated.
-- **LRU** is implemented with one age value per way (true LRU). The page 2 figure gives the
-  replacement policy only for the BTB (pseudo-LRU); the worked example uses LRU.
-- **Model timing.** As in the framework, each branch is trained immediately after its
-  prediction; there is no pipeline delay or speculative history update.
+- **Optional parts.** We skip the loop predictor, the PIR and its address hash, and target
+  prediction, as allowed on PDF page 2. We leave `target_prediction(0)` as in the skeleton.
+  We did not implement the extra-credit `cpm_predictor`.
+- **History.** We record only conditional branch results (R1). The real Pentium M uses
+  path information that also includes indirect branches.
+- **History size.** The page 6 figure labels a 14-bit BHR but uses HASH[14:6].
+  We chose a 15-bit history and hash (section 2).
+- **New global entries.** We follow the appendix's rules for when to create an entry and
+  how to update its counter (R5, R6). We did not test other rules.
+- **Replacement.** We track the full LRU order with one age per way. The appendix uses LRU.
+  The page 2 figure names a different policy, pseudo-LRU, only for the branch target buffer.
+- **Timing.** The program updates each branch right after its prediction. It does not
+  model a CPU pipeline or update history from guesses about unfinished branches.
 
 ## 8. References and reused code
 
