@@ -11,3 +11,10 @@ branch-prediction/programming-branch-predictor.pdf
 branch-prediction/milenkovic_WDDD02.pdf
 branch-prediction/completion-plan.md
 branch-prediction/assignment-explained.md
+
+# o3-simulator: course files and working notes, kept local like the branch-prediction ones
+o3-simulator/programming-tomasulo.pdf
+o3-simulator/Sample_Tomasulo_Assignment_Report.pdf
+o3-simulator/tomasulo-python.zip
+o3-simulator/completion-plan.md
+__pycache__/
