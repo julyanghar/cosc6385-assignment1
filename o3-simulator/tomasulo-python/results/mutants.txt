@@ -1,0 +1,20 @@
+caught  RAT not recovered after a misprediction                        tests: fail   fuzz: fail
+caught  correct fetch at n+1 instead of n+2                            tests: fail   fuzz: fail
+caught  reservation stations of wrong-path instructions not cleared    tests: fail   fuzz: fail
+caught  wrong-path results stay in the results buffer                  tests: fail   fuzz: pass
+caught  RAT written by every broadcast (bug B1 of the original)        tests: fail   fuzz: fail
+caught  no limit on CDB buses                                          tests: fail   fuzz: fail
+caught  commit in the same cycle as WB                                 tests: fail   fuzz: fail
+caught  store commits while the memory is busy                         tests: fail   fuzz: fail
+caught  no limit on commit width                                       tests: fail   fuzz: fail
+caught  forward from the oldest matching store                         tests: pass   fuzz: fail
+caught  load passes stores with unknown addresses                      tests: fail   fuzz: fail
+caught  forwarding in the same cycle as the address calculation        tests: fail   fuzz: fail
+caught  EX in the same cycle as ISSUE                                  tests: fail   fuzz: fail
+caught  unpipelined integer adder treated as pipelined                 tests: pass   fuzz: fail
+caught  BTB ignores the PC tag                                         tests: fail   fuzz: pass
+caught  predicted-taken branch does not end the issue group            tests: fail   fuzz: fail
+caught  issue does not stop at a full ROB                              tests: fail   fuzz: fail
+caught  youngest ready instruction dispatched first                    tests: fail   fuzz: pass
+caught  Beq resolved like Bne                                          tests: fail   fuzz: fail
+19 of 19 mutants caught

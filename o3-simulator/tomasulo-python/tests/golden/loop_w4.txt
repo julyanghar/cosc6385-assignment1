@@ -1,0 +1,7 @@
+ISSUE EX MEM WB COMMIT NOTE
+Addi R1, R1, -1 [1] [2, 2] [] [3] [4]
+Bne R1, R0, -2 [1] [4, 4] [] [] [5] taken, mispredicted
+Addi R1, R1, -1 [6] [7, 7] [] [8] [9]
+Bne R1, R0, -2 [6] [9, 9] [] [] [10] not taken, mispredicted
+Addi R2, R2, 5 [11] [12, 12] [] [13] [14]
+Add R3, R2, R2 [11] [14, 14] [] [15] [16]

@@ -1,0 +1,22 @@
+# One CDB, issue width 4. The Bne is mispredicted while the wrong-path Add.d F5
+# still waits for the CDB behind three older results. After the squash its ROB
+# tag (ROB4) is given to the correct Add.d F5; the stale result must not be
+# broadcast under that tag, or Add.d F6 would read 2.0 instead of 4.0.
+               # of rs   Cycles in EX   Cycles in Mem   # of FUs
+Integer adder   2         3                              1
+FP adder        8         1                              4
+FP multiplier   1         4                              1
+Load/store unit 2         1              2               1
+
+ROB entries = 8
+Issue width = 4
+CDB buses = 1
+R4=1, F8=1.0, F9=2.0
+
+Add.d F1, F9, F9
+Add.d F2, F9, F9
+Add.d F3, F9, F9
+Bne R4, R0, 1
+Add.d F5, F8, F8
+Add.d F5, F9, F9
+Add.d F6, F5, F5

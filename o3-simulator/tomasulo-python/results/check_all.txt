@@ -1,0 +1,85 @@
+ok   btb_alias.txt                      w=1 cycles=10    committed=4    golden
+ok   btb_alias.txt                      w=2 cycles=10    committed=4    golden
+ok   btb_alias.txt                      w=3 cycles=10    committed=4   
+ok   btb_alias.txt                      w=4 cycles=10    committed=4    golden
+ok   bug1_rat_overwrite.txt             w=1 cycles=37    committed=7   
+ok   bug1_rat_overwrite.txt             w=2 cycles=36    committed=7   
+ok   bug1_rat_overwrite.txt             w=3 cycles=36    committed=7   
+ok   bug1_rat_overwrite.txt             w=4 cycles=36    committed=7   
+ok   bug2_store_before_commit.txt       w=1 cycles=23    committed=3   
+ok   bug2_store_before_commit.txt       w=2 cycles=23    committed=3   
+ok   bug2_store_before_commit.txt       w=3 cycles=23    committed=3   
+ok   bug2_store_before_commit.txt       w=4 cycles=23    committed=3   
+ok   bug3_forward_same_cycle.txt        w=1 cycles=14    committed=3   
+ok   bug3_forward_same_cycle.txt        w=2 cycles=13    committed=3   
+ok   bug3_forward_same_cycle.txt        w=3 cycles=13    committed=3   
+ok   bug3_forward_same_cycle.txt        w=4 cycles=13    committed=3   
+ok   bug4_double_advance.txt            w=1 cycles=26    committed=3   
+ok   bug4_double_advance.txt            w=2 cycles=25    committed=3   
+ok   bug4_double_advance.txt            w=3 cycles=25    committed=3   
+ok   bug4_double_advance.txt            w=4 cycles=25    committed=3   
+ok   bug5_empty_rob_crash.txt           w=1 cycles=20    committed=7   
+ok   bug5_empty_rob_crash.txt           w=2 cycles=20    committed=7   
+ok   bug5_empty_rob_crash.txt           w=3 cycles=20    committed=7   
+ok   bug5_empty_rob_crash.txt           w=4 cycles=20    committed=7   
+ok   cdb_limit.txt                      w=1 cycles=11    committed=8   
+ok   cdb_limit.txt                      w=2 cycles=11    committed=8   
+ok   cdb_limit.txt                      w=3 cycles=11    committed=8   
+ok   cdb_limit.txt                      w=4 cycles=11    committed=8   
+ok   chain.txt                          w=1 cycles=22    committed=6   
+ok   chain.txt                          w=2 cycles=22    committed=6   
+ok   chain.txt                          w=3 cycles=22    committed=6   
+ok   chain.txt                          w=4 cycles=22    committed=6   
+ok   daxpy.txt                          w=1 cycles=41    committed=28  
+ok   daxpy.txt                          w=2 cycles=32    committed=28  
+ok   daxpy.txt                          w=3 cycles=31    committed=28  
+ok   daxpy.txt                          w=4 cycles=31    committed=28  
+ok   dispatch_order.txt                 w=1 cycles=8     committed=4    golden
+ok   dispatch_order.txt                 w=2 cycles=8     committed=4    golden
+ok   dispatch_order.txt                 w=3 cycles=8     committed=4   
+ok   dispatch_order.txt                 w=4 cycles=8     committed=4    golden
+ok   independent.txt                    w=1 cycles=12    committed=6    golden
+ok   independent.txt                    w=2 cycles=9     committed=6    golden
+ok   independent.txt                    w=3 cycles=8     committed=6   
+ok   independent.txt                    w=4 cycles=8     committed=6    golden
+ok   loop.txt                           w=1 cycles=16    committed=6    golden
+ok   loop.txt                           w=2 cycles=16    committed=6    golden
+ok   loop.txt                           w=3 cycles=16    committed=6   
+ok   loop.txt                           w=4 cycles=16    committed=6    golden
+ok   memory.txt                         w=1 cycles=17    committed=7    golden
+ok   memory.txt                         w=2 cycles=15    committed=7    golden
+ok   memory.txt                         w=3 cycles=15    committed=7   
+ok   memory.txt                         w=4 cycles=14    committed=7    golden
+ok   original.txt                       w=1 cycles=41    committed=15  
+ok   original.txt                       w=2 cycles=35    committed=15  
+ok   original.txt                       w=3 cycles=34    committed=15  
+ok   original.txt                       w=4 cycles=34    committed=15  
+ok   pdf_sample.txt                     w=1 cycles=200   committed=145  (stopped: reached the limit of 200 cycles)
+ok   pdf_sample.txt                     w=2 cycles=200   committed=147  (stopped: reached the limit of 200 cycles)
+ok   pdf_sample.txt                     w=3 cycles=200   committed=148  (stopped: reached the limit of 200 cycles)
+ok   pdf_sample.txt                     w=4 cycles=200   committed=148  (stopped: reached the limit of 200 cycles)
+ok   r0.txt                             w=1 cycles=12    committed=6   
+ok   r0.txt                             w=2 cycles=10    committed=6   
+ok   r0.txt                             w=3 cycles=10    committed=6   
+ok   r0.txt                             w=4 cycles=10    committed=6   
+ok   sample_tc1.txt                     w=1 cycles=36    committed=17  
+ok   sample_tc1.txt                     w=2 cycles=33    committed=17  
+ok   sample_tc1.txt                     w=3 cycles=33    committed=17  
+ok   sample_tc1.txt                     w=4 cycles=33    committed=17  
+ok   sample_tc2.txt                     w=1 cycles=49    committed=17  
+ok   sample_tc2.txt                     w=2 cycles=47    committed=17  
+ok   sample_tc2.txt                     w=3 cycles=47    committed=17  
+ok   sample_tc2.txt                     w=4 cycles=47    committed=17  
+ok   squash_cdb.txt                     w=1 cycles=14    committed=6   
+ok   squash_cdb.txt                     w=2 cycles=12    committed=6   
+ok   squash_cdb.txt                     w=3 cycles=12    committed=6   
+ok   squash_cdb.txt                     w=4 cycles=11    committed=6    golden
+ok   structural.txt                     w=1 cycles=20    committed=8   
+ok   structural.txt                     w=2 cycles=19    committed=8   
+ok   structural.txt                     w=3 cycles=18    committed=8   
+ok   structural.txt                     w=4 cycles=18    committed=8   
+ok   wide.txt                           w=1 cycles=11    committed=8   
+ok   wide.txt                           w=2 cycles=7     committed=8   
+ok   wide.txt                           w=3 cycles=6     committed=8   
+ok   wide.txt                           w=4 cycles=5     committed=8   
+84 runs, 0 failed, 16 compared with hand-computed tables

@@ -1,0 +1,16 @@
+# The two Add instructions that use R1 become ready in the same cycle and need
+# the single integer adder. The older one goes first, although the younger one
+# sits in reservation station 0.
+               # of rs   Cycles in EX   Cycles in Mem   # of FUs
+Integer adder   3         1                              1
+FP adder        2         2                              1
+FP multiplier   1         4                              1
+Load/store unit 2         1              2               1
+
+ROB entries = 16
+R2=1, R3=2
+
+Add R1, R2, R3
+Add R4, R1, R0
+Add R5, R1, R0
+Addi R6, R0, 6

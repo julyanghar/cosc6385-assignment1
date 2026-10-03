@@ -18,3 +18,4 @@ o3-simulator/Sample_Tomasulo_Assignment_Report.pdf
 o3-simulator/tomasulo-python.zip
 o3-simulator/completion-plan.md
 __pycache__/
+o3-simulator/tomasulo-python/verify/fuzz-failures/

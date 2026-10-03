@@ -1,0 +1,22 @@
+# The branches at instruction 1 and instruction 9 use the same BTB entry
+# (9 mod 8 = 1). The entry stores the PC of its branch, so the Beq does not use
+# the Bne's prediction and target. The seven Addi R3 are always skipped.
+               # of rs   Cycles in EX   Cycles in Mem   # of FUs
+Integer adder   4         1                              1
+FP adder        2         2                              1
+FP multiplier   1         4                              1
+Load/store unit 2         1              2               1
+
+ROB entries = 16
+
+Addi R2, R0, 1
+Bne R2, R0, 7
+Addi R3, R3, 1
+Addi R3, R3, 1
+Addi R3, R3, 1
+Addi R3, R3, 1
+Addi R3, R3, 1
+Addi R3, R3, 1
+Addi R3, R3, 1
+Beq R2, R0, -9
+Addi R4, R0, 4

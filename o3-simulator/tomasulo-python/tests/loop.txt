@@ -1,0 +1,15 @@
+# A loop that runs twice. The empty BTB predicts the first Bne not taken and the
+# 1-bit predictor then predicts the last one taken: both are mispredicted.
+               # of rs   Cycles in EX   Cycles in Mem   # of FUs
+Integer adder   4         1                              2
+FP adder        2         2                              1
+FP multiplier   1         4                              1
+Load/store unit 2         1              2               1
+
+ROB entries = 16
+R1=2
+
+Addi R1, R1, -1
+Bne R1, R0, -2
+Addi R2, R2, 5
+Add R3, R2, R2

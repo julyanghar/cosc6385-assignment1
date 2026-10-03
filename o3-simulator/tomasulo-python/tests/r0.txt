@@ -1,0 +1,16 @@
+# R0 is hardwired to 0: writes to it are dropped and it is never renamed.
+               # of rs   Cycles in EX   Cycles in Mem   # of FUs
+Integer adder   4         1                              1
+FP adder        2         2                              1
+FP multiplier   1         4                              1
+Load/store unit 2         1              2               1
+
+ROB entries = 16
+
+Addi R0, R0, 5
+Add R1, R0, R0
+Addi R2, R0, 7
+Sub R0, R2, R1
+Beq R0, R1, 1
+Addi R3, R0, 99
+Addi R4, R2, 1

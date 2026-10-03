@@ -1,0 +1,16 @@
+# Six independent instructions: the cycle count drops as the issue width grows.
+               # of rs   Cycles in EX   Cycles in Mem   # of FUs
+Integer adder   4         1                              2
+FP adder        4         2                              1
+FP multiplier   2         4                              1
+Load/store unit 4         1              2               1
+
+ROB entries = 16
+F2=1.5, F3=2.5, F5=1.0, F6=2.0, F8=3.0, F9=0.5
+
+Addi R1, R0, 1
+Addi R2, R0, 2
+Add.d F1, F2, F3
+Add.d F4, F5, F6
+Addi R3, R0, 3
+Mult.d F7, F8, F9

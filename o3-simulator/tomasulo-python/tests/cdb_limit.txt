@@ -1,0 +1,19 @@
+# Same as wide.txt, but with one CDB: one result per cycle can be broadcast,
+# so a wider issue does not help after the first few cycles.
+               # of rs   Cycles in EX   Cycles in Mem   # of FUs
+Integer adder   8         1                              4
+FP adder        2         2                              1
+FP multiplier   1         4                              1
+Load/store unit 2         1              2               1
+
+ROB entries = 16
+CDB buses = 1
+
+Addi R1, R0, 1
+Addi R2, R0, 2
+Addi R3, R0, 3
+Addi R4, R0, 4
+Addi R5, R0, 5
+Addi R6, R0, 6
+Addi R7, R0, 7
+Addi R8, R0, 8
