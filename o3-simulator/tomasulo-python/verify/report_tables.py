@@ -2,7 +2,9 @@
 # report cannot drift from the code:
 #   python3 report_tables.py                    summary tables (results/summary.md)
 #   python3 report_tables.py --check REPORT.md  exit 1 if a generated block in
-#                                               REPORT.md differs from the output
+#                                               REPORT.md differs from the output, or
+#                                               a number quoted in the text (CLAIMS)
+#                                               no longer holds
 #   python3 report_tables.py --write REPORT.md  rewrite those blocks
 # A generated block sits between "<!-- BEGIN GENERATED: name -->" and
 # "<!-- END GENERATED: name -->".
@@ -135,7 +137,56 @@ def test_cases():
 BLOCKS = {'summary': summary, 'test-cases': test_cases}
 
 
+def wb_cycles(st):
+    return sorted(e.cdb[0] for e in st.committed if e.cdb)
+
+
+def commit_cycles(st):
+    return [e.commit[0] for e in st.committed]
+
+
+def cycles(name, cdb=None, commit_width=None):
+    return [run(name, w, cdb, commit_width).cycles for w in WIDTHS]
+
+
+def claims():
+    """numbers quoted in the text of REPORT.md sections 1.4, 3.2 and 3.11,
+    recomputed: (where, what the text says, what the simulator gives)"""
+    finishing = sorted(os.path.splitext(os.path.basename(p))[0]
+                       for p in glob.glob(os.path.join(TESTS, '*.txt')))
+    finishing.remove('pdf_sample')
+    flat = [n for n in finishing if len(set(cycles(n, 1, 1))) == 1]
+    daxpy_one = [commit_cycles(run('daxpy', w, 1, 1)) for w in (1, 4)]
+    bursts = commit_cycles(run('daxpy', 4, 1))
+    return [
+        ('1.4, 3.2: wide with one CDB', [11, 11, 11, 11], cycles('wide', 1)),
+        ('1.4, 3.2: independent with one CDB', [12, 9, 9, 9], cycles('independent', 1)),
+        ('3.2: daxpy with one CDB', [41, 34, 33, 33], cycles('daxpy', 1)),
+        ('3.2: original with one CDB', [41, 35, 34, 34], cycles('original', 1)),
+        ('3.2: independent WB cycles, one CDB, width 2', [3, 4, 5, 6, 7, 8],
+         wb_cycles(run('independent', 2, 1))),
+        ('3.2: independent WB cycles, width 1', [3, 4, 6, 7, 8, 11], wb_cycles(run('independent', 1))),
+        ('3.2: programs that finish / same cycles at every width with one CDB and one commit',
+         (24, 16), (len(finishing), len(flat))),
+        ('3.2: daxpy and original among them, 41 cycles', [41, 41],
+         [cycles('daxpy', 1, 1)[0] if 'daxpy' in flat else None,
+          cycles('original', 1, 1)[0] if 'original' in flat else None]),
+        ('3.2: independent with one CDB and one commit', [12, 10, 10, 10], cycles('independent', 1, 1)),
+        ('3.11: daxpy, one CDB and one commit: commits in cycles 17-41 at width 1 and 4',
+         [24, 24], [len([c for c in cs if 17 <= c <= 41]) for cs in daxpy_one]),
+        ('3.11: daxpy, one CDB and one commit: last commit', [41, 41], [cs[-1] for cs in daxpy_one]),
+        ('3.11: daxpy, one CDB, width 4: cycles with 4 commits', [17, 25, 27, 32],
+         sorted(c for c in set(bursts) if bursts.count(c) == 4)),
+        ('3.11: daxpy, one CDB, width 4: cycles', 33, run('daxpy', 4, 1).cycles),
+    ]
+
+
 def update(report, write):
+    wrong = [(where, said, got) for where, said, got in claims() if said != got]
+    for where, said, got in wrong:
+        print('%s: section %s says %s, the simulator gives %s' % (report, where, said, got))
+    if wrong:
+        return 1
     with open(report) as f:
         text = f.read()
     new = text

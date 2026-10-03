@@ -42,8 +42,9 @@ the eight instructions take 11 cycles at every width and DAXPY goes from 41 to 3
 - [Appendix E. Comparison with the sample report](#appendix-e-comparison-with-the-sample-report)
 
 How to run everything is in [README.md](README.md). Every table in section 3 is generated
-from the simulator by [`report_tables.py`](tomasulo-python/verify/report_tables.py), and
-[`run_all.sh`](tomasulo-python/run_all.sh) fails if this report no longer matches it. "The
+from the simulator by [`report_tables.py`](tomasulo-python/verify/report_tables.py), which also
+recomputes the numbers quoted in the text of sections 1.4, 3.2 and 3.11;
+[`run_all.sh`](tomasulo-python/run_all.sh) fails if this report no longer matches them. "The
 handout" means the assignment PDF (`programming-tomasulo.pdf`), which is not included in this
 repository; "the sample report" is `Sample_Tomasulo_Assignment_Report.pdf` from the course.
 
@@ -109,8 +110,13 @@ result.
 The handout lists "one CDB" among the processor's components. The sample report extends write
 back and commit with the issue width: up to *W* results are broadcast and up to *W*
 instructions commit per cycle (its section 2, Code Changes), and its result tables show two
-results written back in the same cycle. With only one CDB, at most one result per cycle can be written back, so
-programs whose instructions are mostly independent gain nothing from a wider issue.
+results written back in the same cycle.
+
+With only one CDB, at most one result per cycle can be written back. How much that limits a
+wider issue depends on the program. Our test `wide` has eight independent instructions on four
+integer adders, so many results are ready in the same cycle; with one CDB it takes 11 cycles at
+every width. `independent` has six independent instructions on units with different latencies;
+with one CDB it still goes from 12 cycles at width 1 to 9 at width 2 (section 3.2).
 
 Our default follows the sample report: the number of CDB buses and the commit width are equal
 to the issue width. Both can be set separately (`CDB buses = N`, `Commit width = N` in the
@@ -470,11 +476,14 @@ What the summary shows (details in section 3.11):
 - With the default setting, a wider issue helps programs with independent work (`wide`,
   `independent`, `daxpy`, `original`) and does nothing for a dependence chain (`chain`) or a loop
   whose time is decided by its mispredictions (`loop`).
-- With one CDB, `wide` stays at 11 cycles at every width: all eight results must use the single
-  CDB one after another. Programs that wait for memory or for long operations still gain:
-  `daxpy` 41 → 33, `original` 41 → 34.
-- With one CDB and one commit per cycle, most programs are limited by commit: `daxpy` and
-  `original` take 41 cycles at every width.
+- With one CDB, `wide` stays at 11 cycles at every width: its eight results are written back
+  one per cycle. Other programs still gain from a wider issue: `independent` 12 → 9, `daxpy`
+  41 → 33, `original` 41 → 34. In `independent` the results finish in different cycles, so
+  issuing earlier lets the single CDB write back in every cycle: at width 2 in each of cycles
+  3–8, at width 1 only in cycles 3, 4, 6, 7, 8 and 11.
+- With one CDB and one commit per cycle, 16 of the 24 programs that finish take the same number
+  of cycles at every width, among them `daxpy` and `original` (41 cycles); for `daxpy` the limit
+  is commit (section 3.11). The other 8 still gain a little, for example `independent` 12 → 10.
 
 <!-- BEGIN GENERATED: test-cases -->
 ### 3.3 Test case 1: `pdf_sample`
@@ -1396,8 +1405,11 @@ Bne R1, R3, -7     [21]    [24, 24]    []          []      [30]    not taken, mi
 - **The CDB.** In `wide`, four integer adders finish four instructions per cycle, but with one
   CDB only one result per cycle is written back: 11 cycles at every width (`cdb_limit` is the same
   program with `CDB buses = 1` in the file).
-- **Commit.** With one commit per cycle, a program of *n* instructions needs at least *n* cycles
-  after its first commit: `daxpy` (28 instructions) stays at 41.
+- **Commit.** With one CDB and one commit per cycle, `daxpy` commits an instruction in 24 of the
+  25 cycles from cycle 17 to cycle 41, at width 1 and at width 4 alike, and it ends in cycle 41
+  at every width. With one CDB but the commit width equal to the issue width, up to four
+  instructions commit in one cycle (in cycles 17, 25, 27 and 32 at width 4), and it ends in
+  cycle 33.
 - **Memory.** One port and memory accesses of several cycles: in `daxpy` 12 accesses of 2 cycles
   each (Figures 29–32); in `sample_tc1` and `sample_tc2` each load takes 6 or 5 cycles.
 - **Branches.** Each misprediction delays the correct instructions until 2 cycles after the

@@ -126,7 +126,7 @@ also be run alone from `verify/`:
 | `fuzz.py [N] [seed]` | the same checks on N random programs with random configurations | 2000 programs × 4 widths, 0 failed |
 | `mutants.py` | makes 25 deliberate mistakes in a copy of the code; each must make a check fail | 25 of 25 caught |
 | `compare_original.py` | prints the original code's tables next to ours at width 1 | differences explained in REPORT.md Appendix D |
-| `report_tables.py` | prints the summary tables; `--check REPORT.md` / `--write REPORT.md` compare or rewrite the generated tables of REPORT.md section 3 | — |
+| `report_tables.py` | prints the summary tables; `--check REPORT.md` fails if the generated tables of REPORT.md section 3, or the numbers quoted in its text about the CDB and commit settings, no longer match the simulator; `--write REPORT.md` rewrites the tables | REPORT.md up to date |
 
 ## Layout
 
