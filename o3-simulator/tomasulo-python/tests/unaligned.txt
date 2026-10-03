@@ -1,0 +1,22 @@
+# Byte addresses that are not multiples of 4 (the slow Mult.d keeps the stores
+# in the queue). Sd F1, 2(R0) writes bytes 2-5, half of the word at 0 and half
+# of the word at 4. Ld F3, 2(R0) has the same address and forwards. Ld F4, 0(R0)
+# and Ld F5, 4(R0) overlap the store only partly: they wait until it has
+# written memory, then read the mixed bytes (little-endian).
+               # of rs   Cycles in EX   Cycles in Mem   # of FUs
+Integer adder   2         1                              1
+FP adder        2         2                              1
+FP multiplier   1         4                              1
+Load/store unit 4         1              2               1
+
+ROB entries = 16
+F1=1.5, F2=-2.25
+Mem[0]=1.0, Mem[4]=2.0
+
+Mult.d F7, F1, F1
+Sd F1, 2(R0)
+Ld F3, 2(R0)
+Ld F4, 0(R0)
+Ld F5, 4(R0)
+Sd F2, 9(R0)
+Ld F6, 9(R0)

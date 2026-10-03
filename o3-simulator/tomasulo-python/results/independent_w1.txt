@@ -6,12 +6,12 @@ Load/store unit   4         1              2              1
 ROB entries = 16, Issue width = 1, CDB buses = 1, Commit width = 1
 
                    ISSUE   EX          MEM         WB      COMMIT  NOTE
-Addi R1, R0, 1     [1]     [2, 2]      []          [3]     [4]     
-Addi R2, R0, 2     [2]     [3, 3]      []          [4]     [5]     
-Add.d F1, F2, F3   [3]     [4, 5]      []          [6]     [7]     
-Add.d F4, F5, F6   [4]     [5, 6]      []          [7]     [8]     
-Addi R3, R0, 3     [5]     [6, 6]      []          [8]     [9]     
-Mult.d F7, F8, F9  [6]     [7, 10]     []          [11]    [12]    
+Addi R1, R0, 1     [1]     [2, 2]      []          [3]     [4]
+Addi R2, R0, 2     [2]     [3, 3]      []          [4]     [5]
+Add.d F1, F2, F3   [3]     [4, 5]      []          [6]     [7]
+Add.d F4, F5, F6   [4]     [5, 6]      []          [7]     [8]
+Addi R3, R0, 3     [5]     [6, 6]      []          [8]     [9]
+Mult.d F7, F8, F9  [6]     [7, 10]     []          [11]    [12]
 
 REGISTER VALUES
         R0        R1        R2        R3        R4        R5        R6        R7        
@@ -34,4 +34,4 @@ value:  0.0       0.0       0.0       0.0       0.0       0.0       0.0       0.
 NON-ZERO MEMORY VALUES
 Addresses   Values
 
-Cycles: 12, committed instructions: 6, IPC: 0.500, branches: 0, mispredicted: 0, squashed instructions: 0
+Cycles: 12, committed instructions: 6, IPC: 0.500, branches: 0, mispredicted: 0, memory-order violations: 0, squashed instructions: 0

@@ -1,4 +1,7 @@
-# Checks every input in tests/ at issue widths 1-4:
+# Checks every input in tests/ at issue widths 1-4, each in three settings: the
+# default (CDB buses and commit width as in the file, else equal to the issue
+# width), "one CDB" (one CDB bus), and "issue only" (one CDB bus and one commit
+# per cycle):
 #   V1  final registers, memory and the committed instruction sequence equal
 #       those of the functional reference (reference.py)
 #   V2  the timing of every committed instruction obeys the model's rules
@@ -6,6 +9,11 @@
 #       the simulator's code)
 #   V3  where tests/golden/<test>_w<N>.txt exists, the printed instruction
 #       table equals it exactly (hand-computed tables)
+#   V4  the printed registers and non-zero memory read back as the values the
+#       simulator holds
+# A run that stops at the cycle limit passes only if the reference cannot
+# finish the program either (pdf_sample loops forever); then only the
+# committed prefix can be checked, and the run is counted as "prefix".
 # Usage: python3 check_all.py [test files...]   (default: all of tests/*.txt)
 
 import contextlib
@@ -13,13 +21,14 @@ import glob
 import io
 import os
 import re
+import struct
 import sys
 from collections import Counter
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, '..', 'code'))
 from main import simulate
-from print_status import print_table
+from print_status import print_table, print_registers, print_memory
 from reference import run_reference
 
 TESTS = os.path.join(HERE, '..', 'tests')
@@ -27,6 +36,24 @@ BRANCHES = ('Beq', 'Bne')
 # PDF: integer adder unpipelined, FP adder and multiplier pipelined; we chose
 # unpipelined address adders. Kept here, not read from the simulator.
 PIPELINED = {'int': False, 'fpadd': True, 'fpmul': True, 'ldsd': False}
+
+
+def same(a, b):
+    """equal values; two NaNs count as equal"""
+    return a == b or (a != a and b != b)
+
+
+def overlaps(address1, address2):
+    """two 4-byte accesses share a byte"""
+    return address1 < address2 + 4 and address2 < address1 + 4
+
+
+def single(text):
+    """a printed number read as single precision"""
+    try:
+        return struct.unpack('<f', struct.pack('<f', float(text)))[0]
+    except OverflowError:
+        return float(text) * float('inf')
 
 
 def sources(ins):
@@ -176,35 +203,51 @@ def check_timing(st):
             for e in entries if e.ins.unit == 'ldsd' and len(e.mem) == 2]
     if count_overlaps(held) > cfg['ldsd_rs']:
         errors.append('ld/sd queue: more than %d entries in use' % cfg['ldsd_rs'])
-    # loads against older stores
+    # loads against older stores (4-byte accesses that overlap if they share a
+    # byte). A load may go ahead of stores whose address is unknown; whatever
+    # it did, the committed load must have taken its data from the right place.
     stores = []
+    data_wb = {}                    # store seq -> WB cycle of its data's producer (0: initial value)
+    writers = {}
     for entry in entries:
         if entry.ins.op == 'Sd':
             stores.append(entry)
+            producer = writers.get(entry.ins.src1)
+            data_wb[entry.seq] = producer.cdb[0] if producer is not None else 0
         elif entry.ins.op == 'Ld' and len(entry.mem) == 2:
             start = entry.mem[0]
             address = entry.lsq.address
-            for store in stores:
-                # every older store's address is known before the load decides
-                if start <= store.exe[1]:
-                    bad(entry, 'MEM starts %d before older store "%s" has its address (%d)'
-                        % (start, store.ins.text, store.exe[1]))
-            same = [s for s in stores if s.lsq.address == address]
+            older = [s for s in stores if overlaps(s.lsq.address, address)]
             if entry.forwarded:
-                # from the youngest older store to that address, still in the queue
-                if not same or same[-1].commit[0] < start:
-                    bad(entry, 'forwarded, but no older store to that address is in the queue')
+                # from the youngest older overlapping store, at the same address,
+                # with its address and data known, while it is still in the queue
+                if not older:
+                    bad(entry, 'forwarded, but no older store overlaps it')
+                else:
+                    source = older[-1]
+                    if source.lsq.address != address:
+                        bad(entry, 'forwarded, but the youngest overlapping store "%s" is at another address'
+                            % source.ins.text)
+                    if source.commit[0] < start:
+                        bad(entry, 'forwarded at %d after "%s" left the queue (commit %d)'
+                            % (start, source.ins.text, source.commit[0]))
+                    if start <= source.exe[1] or start <= data_wb[source.seq]:
+                        bad(entry, 'forwarded at %d before "%s" had its address and data'
+                            % (start, source.ins.text))
             else:
-                # memory is read only after every older store to that address wrote it
-                for store in same:
+                # memory is read only after every older overlapping store wrote it
+                for store in older:
                     if start <= store.mem[1]:
                         bad(entry, 'reads memory at %d before older store "%s" wrote it (%s)'
                             % (start, store.ins.text, store.mem))
+        if entry.ins.dest is not None and entry.ins.dest != 'R0':
+            writers[entry.ins.dest] = entry
     return errors
 
 
 def check_function(st, path, max_steps):
-    """V1: returns a list of differences from the functional reference"""
+    """V1: returns (list of differences from the functional reference,
+    'full' or 'prefix')"""
     errors = []
     trace, R, F, M, finished = run_reference(path, max_steps)
     pcs = [e.PC for e in st.committed]
@@ -215,12 +258,51 @@ def check_function(st, path, max_steps):
             errors.append('committed sequence differs from the reference')
         if st.reg_int != R:
             errors.append('integer registers differ: %s vs %s' % (st.reg_int, R))
-        if st.reg_fp != F:
+        if not all(same(a, b) for a, b in zip(st.reg_fp, F)):
             errors.append('FP registers differ: %s vs %s' % (st.reg_fp, F))
-        if [float(x) for x in st.memory] != [float(x) for x in M]:
+        if bytes(st.memory) != bytes(M):
             errors.append('memory differs')
+        return errors, 'full'
+    if finished:
+        # stopping early is right only for a program that does not end
+        errors.append('stopped (%s), but the program ends after %d instructions'
+                      % (st.stop_reason, len(trace)))
     elif pcs != trace[:len(pcs)]:
         errors.append('committed sequence (stopped early) is not a prefix of the reference')
+    return errors, 'prefix'
+
+
+def check_output(st):
+    """V4: the printed registers and memory read back as the simulator's values"""
+    errors = []
+    out = io.StringIO()
+    with contextlib.redirect_stdout(out):
+        print_registers(st)
+        print_memory(st)
+    lines = out.getvalue().splitlines()
+    printed = {}
+    for names, values in zip(lines, lines[1:]):
+        if values.startswith('value:'):
+            printed.update(zip(names.split(), values.split()[1:]))
+    for i in range(32):
+        if printed.get('R%d' % i) != str(st.reg_int[i]):
+            errors.append('R%d printed as %r, holds %r' % (i, printed.get('R%d' % i), st.reg_int[i]))
+        text = printed.get('F%d' % i)
+        if text is None or not same(float(text), st.reg_fp[i]):
+            errors.append('F%d printed as %r, holds %r' % (i, text, st.reg_fp[i]))
+    memory = {}
+    for line in lines[lines.index('Addresses   Values') + 1:]:
+        if not line.strip():
+            break
+        address, text = line.split()
+        memory[int(address)] = text
+    nonzero = [a for a in range(0, 256, 4) if any(st.memory[a:a + 4])]
+    if sorted(memory) != nonzero:
+        errors.append('non-zero memory words %s, printed %s' % (nonzero, sorted(memory)))
+    for address, text in memory.items():
+        value = struct.unpack('<f', bytes(st.memory[address:address + 4]))[0]
+        if not same(single(text), value):
+            errors.append('Mem[%d] printed as %r, holds %r' % (address, text, value))
     return errors
 
 
@@ -236,13 +318,14 @@ def table_text(st):
     return out.getvalue()
 
 
-def check(path, width, max_cycles=10000):
-    st = simulate(path, width, max_cycles)
-    errors = check_function(st, path, max_steps=len(st.committed) + 100000)
+def check(path, width, max_cycles=10000, cdb=None, commit_width=None):
+    st = simulate(path, width, max_cycles, cdb, commit_width)
+    errors, kind = check_function(st, path, max_steps=len(st.committed) + 100000)
     errors += check_timing(st)
+    errors += check_output(st)
     name = os.path.splitext(os.path.basename(path))[0]
     golden = os.path.join(TESTS, 'golden', '%s_w%d.txt' % (name, width))
-    has_golden = os.path.exists(golden)
+    has_golden = os.path.exists(golden) and cdb is None and commit_width is None
     if has_golden:
         with open(golden) as f:
             expected = f.read()
@@ -256,30 +339,34 @@ def check(path, width, max_cycles=10000):
                 if g != w:
                     errors.append('  got:      ' + g)
                     errors.append('  expected: ' + w)
-    return st, errors, has_golden
+    return st, errors, has_golden, kind
 
 
 def main():
     paths = sys.argv[1:] or sorted(glob.glob(os.path.join(TESTS, '*.txt')))
-    failed = 0
+    count = Counter()
     goldens = 0
+    runs = 0
     for path in paths:
-        for width in (1, 2, 3, 4):
-            # pdf_sample loops forever by construction; stop it early
-            max_cycles = 200 if os.path.basename(path) == 'pdf_sample.txt' else 10000
-            st, errors, has_golden = check(path, width, max_cycles)
-            goldens += has_golden
-            status = 'FAIL' if errors else 'ok'
-            extra = ' (stopped: %s)' % st.stop_reason if st.stop_reason else ''
-            print('%-4s %-34s w=%d cycles=%-5d committed=%-4d%s%s' % (
-                status, os.path.basename(path), width, st.cycles, len(st.committed),
-                ' golden' if has_golden else '', extra))
-            for error in errors[:12]:
-                print('       ' + error)
-            failed += bool(errors)
-    print('%d runs, %d failed, %d compared with hand-computed tables' % (
-        4 * len(paths), failed, goldens))
-    sys.exit(1 if failed else 0)
+        for setting, cdb, commit_width in (('default', None, None), ('one-cdb', 1, None), ('issue-only', 1, 1)):
+            for width in (1, 2, 3, 4):
+                # pdf_sample loops forever by construction; stop it early
+                max_cycles = 200 if os.path.basename(path) == 'pdf_sample.txt' else 10000
+                st, errors, has_golden, kind = check(path, width, max_cycles, cdb, commit_width)
+                runs += 1
+                goldens += has_golden
+                status = 'FAIL' if errors else ('ok' if kind == 'full' else 'prefix')
+                count[status] += 1
+                extra = ' (stopped: %s)' % st.stop_reason if st.stop_reason else ''
+                print('%-6s %-30s %-10s w=%d cycles=%-5d committed=%-4d%s%s' % (
+                    status, os.path.basename(path), setting, width, st.cycles, len(st.committed),
+                    ' golden' if has_golden else '', extra))
+                for error in errors[:12]:
+                    print('       ' + error)
+    print('%d runs: %d ok (final state checked), %d prefix (program never ends, committed '
+          'prefix checked), %d failed; %d compared with hand-computed tables' % (
+              runs, count['ok'], count['prefix'], count['FAIL'], goldens))
+    sys.exit(1 if count['FAIL'] else 0)
 
 
 if __name__ == '__main__':

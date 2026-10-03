@@ -1,9 +1,12 @@
 # Qing 
 # 21st May 2017 
 # COSC 6385, Oct 2026: plain classes instead of namedtuple classes, input file
-# parsing, machine state for multi-issue and branch prediction.
+# parsing, machine state for multi-issue and branch prediction, a 256-byte
+# memory holding single-precision values.
 
+import math
 import re
+import struct
 from collections import deque
 
 '''define data types'''
@@ -88,6 +91,8 @@ class ROB_entry:
         self.taken = None
         self.mispredicted = 0
         self.forwarded = 0      # load got its data from a store in the queue
+        self.forwarded_from = None  # that store's ROB entry
+        self.replayed = 0       # load fetched again after a memory-order violation
         self.error = None       # bad memory address, reported only if the instruction commits
 
 # BTB entry
@@ -112,6 +117,26 @@ class instruction:
 
 class SimulationError(Exception):
     pass
+
+'''memory: 256 bytes; Ld and Sd move 4-byte single-precision values (little-endian)'''
+MEMORY_BYTES = 256
+
+# function: the single-precision value nearest to a Python float (too large: infinity)
+def to_single(value):
+    try:
+        return struct.unpack('<f', struct.pack('<f', value))[0]
+    except OverflowError:
+        return math.copysign(math.inf, value)
+
+# function: is a 4-byte access at this address inside the memory?
+def valid_address(address):
+    return 0 <= address <= MEMORY_BYTES - 4
+
+def read_single(memory, address):
+    return struct.unpack('<f', bytes(memory[address:address + 4]))[0]
+
+def write_single(memory, address, value):
+    memory[address:address + 4] = struct.pack('<f', to_single(value))
 
 '''input file'''
 # canonical opcode names, as the original code spells them
@@ -196,7 +221,7 @@ def parse_number(text, line):
 def read_input(path):
     config = dict(DEFAULT_CONFIG)
     reg_init = {}       # 'R1' -> 10, 'F2' -> 30.1
-    mem_init = {}       # byte address -> value
+    mem_init = {}       # byte address -> value (4 bytes from that address)
     instructions = []
     rows = {'integer adder': 'int', 'fp adder': 'fpadd',
             'fp multiplier': 'fpmul', 'load/store unit': 'ldsd'}
@@ -205,9 +230,9 @@ def read_input(path):
     with open(path) as f:
         lines = f.read().splitlines()
     for raw in lines:
-        line = raw.strip()
+        line = raw.split('#')[0].strip()           # '#' starts a comment (also the table header)
         low = line.lower()
-        if line == '' or line.startswith('#'):     # blank line, comment, table header
+        if line == '':
             continue
         row = [r for r in rows if low.startswith(r)]
         setting = [s for s in settings if low.startswith(s)]
@@ -244,8 +269,9 @@ def read_input(path):
                 if not m:
                     raise SimulationError('expected "Mem[address]=value": %s' % line)
                 address = int(m.group(1))
-                if address >= 256:
-                    raise SimulationError('memory address must be below 256: %s' % line)
+                if not valid_address(address):
+                    raise SimulationError('a 4-byte value must start at address 0 to %d: %s'
+                                          % (MEMORY_BYTES - 4, line))
                 mem_init[address] = float(parse_number(m.group(2), line))
         else:
             instructions.append(parse_instruction(line))
@@ -272,11 +298,12 @@ class State:
                 self.reg_fp[int(reg[1:])] = value
         self.rat_int = list(self.reg_int)
         self.rat_fp = list(self.reg_fp)
-        # memory: 256 byte addresses; as in the original code each address holds
-        # one value (a value is not split into bytes), so any address 0-255 works
-        self.memory = [0] * 256
+        # memory: 256 bytes (64 words); a value takes 4 bytes from its byte
+        # address, which need not be a multiple of 4 (the handout's sample input
+        # loads from address 18)
+        self.memory = bytearray(MEMORY_BYTES)
         for address, value in mem_init.items():
-            self.memory[address] = value
+            write_single(self.memory, address, value)
         # reservation stations and functional units
         self.rs = {}
         self.fu = {}
@@ -306,5 +333,7 @@ class State:
         # results
         self.committed = []         # committed ROB entries in order
         self.squashed = 0           # wrong-path instructions removed from the ROB
+        self.violations = 0         # memory-order violations (loads fetched again)
+        self.replay_pc = None       # PC of the load to mark as replayed when it issues again
         self.cycles = 0
         self.stop_reason = None

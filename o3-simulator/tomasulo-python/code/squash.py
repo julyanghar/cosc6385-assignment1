@@ -1,20 +1,26 @@
-# COSC 6385, Oct 2026: misprediction recovery (new file)
+# COSC 6385, Oct 2026: recovery from a mispredicted branch or a memory-order
+# violation (new file)
 
 '''
-Called in the cycle n in which a branch finishes EX and turns out to be
-mispredicted. Everything younger than the branch is on the wrong path:
-1. clear ROB entries younger than the branch
-2. clear the reservation stations (and with them their wait-for tags) and
-   ld/sd queue entries of those instructions; also drop them from the
-   functional units, from the results waiting for a CDB and from the memory
+Called in cycle n with the program-order number (seq) of the last instruction
+to keep and the PC to fetch next:
+-- a mispredicted branch, in the cycle it finishes EX: keep the branch, fetch
+   its correct next PC
+-- a memory-order violation (mem.py), in the cycle it is found: keep the
+   instructions before the load, fetch the load again
+Every younger instruction is on the wrong path:
+1. clear their ROB entries
+2. clear their reservation stations (and with them the wait-for tags) and
+   ld/sd queue entries; also drop them from the functional units, from the
+   results waiting for a CDB and from the memory
 3. recover the RAT
 The PDF counts these actions as one cycle (n+1): fetching from the correct
 PC starts in cycle n+2.
 '''
 
-def squash(st, branch, cycle):
+def squash(st, last_kept_seq, next_pc, cycle):
     def wrong(rob):
-        return rob.seq > branch.seq
+        return rob.seq > last_kept_seq
     '''1. ROB'''
     young = [rob for rob in st.ROB if wrong(rob)]
     for rob in young:
@@ -36,7 +42,7 @@ def squash(st, branch, cycle):
         st.mem_load = None
         st.mem_busy_until = cycle       # memory free again from the next cycle
     '''3. RAT: rebuilt from the architectural registers and the ROB entries
-    that remain (all older than the branch, in program order): a register
+    that remain (all kept, in program order): a register
     maps to its youngest remaining producer, as a value if that producer has
     already broadcast, else as its ROB tag'''
     st.rat_int = list(st.reg_int)
@@ -50,5 +56,6 @@ def squash(st, branch, cycle):
         else:
             st.rat_int[int(rob.dest_tag[1:])] = content
     '''fetch from the correct PC in cycle n+2'''
-    st.PC = branch.actual_next
+    st.PC = next_pc
     st.fetch_resume = cycle + 2
+    st.replay_pc = None

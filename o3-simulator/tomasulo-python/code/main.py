@@ -1,8 +1,9 @@
 # Qing 
 # 21st May 2017 
 # COSC 6385, Oct 2026: configuration, initial values and program come from the
-# input file; issue width from the file or --width; output as the assignment
-# asks; simulate() can be called by the test scripts.
+# input file; issue width from the file or --width (CDB buses and commit width
+# also from the file or --cdb, --commit-width); output as the assignment asks;
+# simulate() can be called by the test scripts.
 
 import argparse
 import sys
@@ -20,10 +21,14 @@ def finished(st, cycle):
     return (len(st.ROB) == 0) and not (0 <= st.PC < len(st.instructions)) \
         and (st.mem_busy_until < cycle)
 
-def simulate(path, width=None, max_cycles=10000):
+def simulate(path, width=None, max_cycles=10000, cdb=None, commit_width=None):
     config, reg_init, mem_init, instructions = read_input(path)
     if width is not None:
         config['issue_width'] = width
+    if cdb is not None:
+        config['cdb'] = cdb
+    if commit_width is not None:
+        config['commit_width'] = commit_width
     st = State(config, reg_init, mem_init, instructions)
     cycle = 1
     while not finished(st, cycle):
@@ -57,10 +62,14 @@ def main():
     parser.add_argument('input', nargs='?', default='test_case.txt', help='input file (default: test_case.txt)')
     parser.add_argument('--width', type=int, choices=[1, 2, 3, 4],
                         help='issue width; overrides "Issue width = N" in the input file')
+    parser.add_argument('--cdb', type=int, choices=[1, 2, 3, 4],
+                        help='CDB buses; overrides "CDB buses = N" (default: the issue width)')
+    parser.add_argument('--commit-width', type=int, choices=[1, 2, 3, 4],
+                        help='commits per cycle; overrides "Commit width = N" (default: the issue width)')
     parser.add_argument('--max-cycles', type=int, default=10000, help='stop after this many cycles (default 10000)')
     args = parser.parse_args()
     try:
-        st = simulate(args.input, args.width, args.max_cycles)
+        st = simulate(args.input, args.width, args.max_cycles, args.cdb, args.commit_width)
     except SimulationError as error:
         print('input error: %s' % error)
         sys.exit(1)

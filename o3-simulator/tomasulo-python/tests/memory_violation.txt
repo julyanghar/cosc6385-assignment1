@@ -1,0 +1,19 @@
+# A load goes ahead of an older store whose address is not known yet, as the
+# handout allows, but the store turns out to write the same address (8): the
+# load read the old value 10.0. In the cycle after the store's address is
+# calculated the conflict is found; the load and the Add.d that used its value
+# are squashed and fetched again two cycles later. Final F2 = 1.5, F3 = 3.0.
+               # of rs   Cycles in EX   Cycles in Mem   # of FUs
+Integer adder   2         4                              1
+FP adder        2         2                              1
+FP multiplier   1         4                              1
+Load/store unit 4         1              2               1
+
+ROB entries = 16
+R1=8, F1=1.5
+Mem[8]=10.0
+
+Addi R2, R1, 0
+Sd F1, 0(R2)
+Ld F2, 0(R1)
+Add.d F3, F2, F2

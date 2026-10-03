@@ -22,7 +22,7 @@ FP_REGS = ['F1', 'F2', 'F3', 'F4', 'F5', 'F6']
 
 
 def straight_line(rng):
-    kind = rng.choice(['int', 'int', 'fp', 'fp', 'fp', 'ld', 'ld', 'sd', 'sd', 'sd-ld', 'base'])
+    kind = rng.choice(['int', 'int', 'fp', 'fp', 'fp', 'ld', 'ld', 'sd', 'sd', 'sd-ld', 'alias', 'base'])
     if kind == 'base':
         return rng.choice(['Add R7, R7, R0', 'Sub R7, R7, R0', 'Addi R7, R7, 0'])
     if kind == 'int':
@@ -34,9 +34,15 @@ def straight_line(rng):
     if kind == 'fp':
         op = rng.choice(['Add.d', 'Sub.d', 'Mult.d'])
         return '%s %s, %s, %s' % (op, rng.choice(FP_REGS), rng.choice(FP_REGS), rng.choice(FP_REGS))
-    # R6 + 16 and R7 + 0 are the same address
+    # R6 + 16 and R7 + 0 are the same address; some offsets are not multiples
+    # of 4, so accesses can overlap partly
     base = rng.choice(['R6', 'R7'])
-    offset = 4 * rng.randint(0, 4)
+    offset = 4 * rng.randint(0, 4) + rng.choice([0, 0, 0, 2])
+    if kind == 'alias':
+        # a store whose base register may be late, then a load of the same
+        # address through the other base register: the load may go first
+        return 'Sd %s, %d(R7)\nLd %s, %d(R6)' % (rng.choice(FP_REGS), offset,
+                                                rng.choice(FP_REGS), offset + 16)
     if kind == 'sd-ld':
         # a store and a load of the same address, for forwarding
         return 'Sd %s, %d(%s)\nLd %s, %d(%s)' % (rng.choice(FP_REGS), offset, base,
@@ -77,7 +83,9 @@ def config(rng):
     regs = ['R%d=%d' % (i, rng.randint(-2, 3)) for i in range(1, 6)]
     regs = [r for r in regs if not r.endswith('=0')]
     regs += ['R7=16', 'R8=%d' % rng.randint(1, 3), 'R9=%d' % rng.randint(1, 3)]
-    regs += ['F%d=%s' % (i, rng.choice(['0.5', '1.5', '2.0', '-1.0', '3.0'])) for i in range(1, 7)]
+    # some values are not single-precision numbers, so Sd has to round them
+    regs += ['F%d=%s' % (i, rng.choice(['0.5', '1.5', '2.0', '-1.0', '3.0', '0.1', '3.4', '16777217', '1e-7']))
+             for i in range(1, 7)]
     text.append(', '.join(regs))
     text.append(', '.join('Mem[%d]=%s' % (a, rng.choice(['1.0', '2.5', '-4.0'])) for a in range(0, 48, 8)))
     return text
@@ -107,7 +115,7 @@ def main():
         made += 1
         failed = False
         for width in (1, 2, 3, 4):
-            st, errors, _ = check(path, width, max_cycles=20000)
+            st, errors, _, _ = check(path, width, max_cycles=20000)
             runs += 1
             if st.stop_reason is not None:
                 errors.append('stopped: %s' % st.stop_reason)

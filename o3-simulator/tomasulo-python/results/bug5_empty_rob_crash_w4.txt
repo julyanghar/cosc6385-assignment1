@@ -6,13 +6,13 @@ Load/store unit   5         1              5              1
 ROB entries = 64, Issue width = 4, CDB buses = 4, Commit width = 4
 
                   ISSUE   EX          MEM         WB      COMMIT  NOTE
-Addi R1 R1 -4     [1]     [2, 2]      []          [3]     [4]     
+Addi R1 R1 -4     [1]     [2, 2]      []          [3]     [4]
 Bne R1 R0 -2      [1]     [4, 4]      []          []      [5]     taken, mispredicted
-Addi R1 R1 -4     [6]     [7, 7]      []          [8]     [9]     
+Addi R1 R1 -4     [6]     [7, 7]      []          [8]     [9]
 Bne R1 R0 -2      [6]     [9, 9]      []          []      [10]    taken
-Addi R1 R1 -4     [7]     [10, 10]    []          [11]    [12]    
+Addi R1 R1 -4     [7]     [10, 10]    []          [11]    [12]
 Bne R1 R0 -2      [7]     [12, 12]    []          []      [13]    not taken, mispredicted
-Add.d F4 F20 F20  [14]    [15, 18]    []          [19]    [20]    
+Add.d F4 F20 F20  [14]    [15, 18]    []          [19]    [20]
 
 REGISTER VALUES
         R0        R1        R2        R3        R4        R5        R6        R7        
@@ -41,4 +41,4 @@ Addresses   Values
 28          5.0
 32          4.0
 
-Cycles: 20, committed instructions: 7, IPC: 0.350, branches: 3, mispredicted: 2, squashed instructions: 4
+Cycles: 20, committed instructions: 7, IPC: 0.350, branches: 3, mispredicted: 2, memory-order violations: 0, squashed instructions: 4

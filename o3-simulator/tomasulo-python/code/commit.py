@@ -9,11 +9,12 @@ commits in this cycle if
        (architectural register written; R0 stays 0)
     -- branch: it finished EX in an earlier cycle
     -- store: its address and data arrived in an earlier cycle and the memory
-       is free; the store writes memory now (MEM = time_mem cycles from this
-       cycle) and leaves the ld_sd_queue
+       is free; the store writes memory now, as a 4-byte single-precision
+       value (MEM = time_mem cycles from this cycle), and leaves the
+       ld_sd_queue
 Otherwise it and everything behind it wait.
 '''
-from init import SimulationError
+from init import SimulationError, valid_address, write_single
 
 # function: modify architectual reg
 def modify_arch_reg(entry, st):
@@ -48,10 +49,10 @@ def commit(cycle, st):
             raise SimulationError('%s (instruction "%s")' % (head.error, head.ins.text))
         if head.ins.op == 'Sd':
             address = head.lsq.address
-            if not (0 <= address < 256):
+            if not valid_address(address):
                 raise SimulationError('store to invalid address %d (instruction "%s")' % (
                     address, head.ins.text))
-            st.memory[address] = head.lsq.data
+            write_single(st.memory, address, head.lsq.data)
             head.mem = [cycle, cycle + st.time_mem - 1]
             st.mem_busy_until = cycle + st.time_mem - 1
             st.ld_sd_queue.remove(head.lsq)

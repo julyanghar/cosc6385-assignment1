@@ -1,85 +1,301 @@
-ok   btb_alias.txt                      w=1 cycles=10    committed=4    golden
-ok   btb_alias.txt                      w=2 cycles=10    committed=4    golden
-ok   btb_alias.txt                      w=3 cycles=10    committed=4   
-ok   btb_alias.txt                      w=4 cycles=10    committed=4    golden
-ok   bug1_rat_overwrite.txt             w=1 cycles=37    committed=7   
-ok   bug1_rat_overwrite.txt             w=2 cycles=36    committed=7   
-ok   bug1_rat_overwrite.txt             w=3 cycles=36    committed=7   
-ok   bug1_rat_overwrite.txt             w=4 cycles=36    committed=7   
-ok   bug2_store_before_commit.txt       w=1 cycles=23    committed=3   
-ok   bug2_store_before_commit.txt       w=2 cycles=23    committed=3   
-ok   bug2_store_before_commit.txt       w=3 cycles=23    committed=3   
-ok   bug2_store_before_commit.txt       w=4 cycles=23    committed=3   
-ok   bug3_forward_same_cycle.txt        w=1 cycles=14    committed=3   
-ok   bug3_forward_same_cycle.txt        w=2 cycles=13    committed=3   
-ok   bug3_forward_same_cycle.txt        w=3 cycles=13    committed=3   
-ok   bug3_forward_same_cycle.txt        w=4 cycles=13    committed=3   
-ok   bug4_double_advance.txt            w=1 cycles=26    committed=3   
-ok   bug4_double_advance.txt            w=2 cycles=25    committed=3   
-ok   bug4_double_advance.txt            w=3 cycles=25    committed=3   
-ok   bug4_double_advance.txt            w=4 cycles=25    committed=3   
-ok   bug5_empty_rob_crash.txt           w=1 cycles=20    committed=7   
-ok   bug5_empty_rob_crash.txt           w=2 cycles=20    committed=7   
-ok   bug5_empty_rob_crash.txt           w=3 cycles=20    committed=7   
-ok   bug5_empty_rob_crash.txt           w=4 cycles=20    committed=7   
-ok   cdb_limit.txt                      w=1 cycles=11    committed=8   
-ok   cdb_limit.txt                      w=2 cycles=11    committed=8   
-ok   cdb_limit.txt                      w=3 cycles=11    committed=8   
-ok   cdb_limit.txt                      w=4 cycles=11    committed=8   
-ok   chain.txt                          w=1 cycles=22    committed=6   
-ok   chain.txt                          w=2 cycles=22    committed=6   
-ok   chain.txt                          w=3 cycles=22    committed=6   
-ok   chain.txt                          w=4 cycles=22    committed=6   
-ok   daxpy.txt                          w=1 cycles=41    committed=28  
-ok   daxpy.txt                          w=2 cycles=32    committed=28  
-ok   daxpy.txt                          w=3 cycles=31    committed=28  
-ok   daxpy.txt                          w=4 cycles=31    committed=28  
-ok   dispatch_order.txt                 w=1 cycles=8     committed=4    golden
-ok   dispatch_order.txt                 w=2 cycles=8     committed=4    golden
-ok   dispatch_order.txt                 w=3 cycles=8     committed=4   
-ok   dispatch_order.txt                 w=4 cycles=8     committed=4    golden
-ok   independent.txt                    w=1 cycles=12    committed=6    golden
-ok   independent.txt                    w=2 cycles=9     committed=6    golden
-ok   independent.txt                    w=3 cycles=8     committed=6   
-ok   independent.txt                    w=4 cycles=8     committed=6    golden
-ok   loop.txt                           w=1 cycles=16    committed=6    golden
-ok   loop.txt                           w=2 cycles=16    committed=6    golden
-ok   loop.txt                           w=3 cycles=16    committed=6   
-ok   loop.txt                           w=4 cycles=16    committed=6    golden
-ok   memory.txt                         w=1 cycles=17    committed=7    golden
-ok   memory.txt                         w=2 cycles=15    committed=7    golden
-ok   memory.txt                         w=3 cycles=15    committed=7   
-ok   memory.txt                         w=4 cycles=14    committed=7    golden
-ok   original.txt                       w=1 cycles=41    committed=15  
-ok   original.txt                       w=2 cycles=35    committed=15  
-ok   original.txt                       w=3 cycles=34    committed=15  
-ok   original.txt                       w=4 cycles=34    committed=15  
-ok   pdf_sample.txt                     w=1 cycles=200   committed=145  (stopped: reached the limit of 200 cycles)
-ok   pdf_sample.txt                     w=2 cycles=200   committed=147  (stopped: reached the limit of 200 cycles)
-ok   pdf_sample.txt                     w=3 cycles=200   committed=148  (stopped: reached the limit of 200 cycles)
-ok   pdf_sample.txt                     w=4 cycles=200   committed=148  (stopped: reached the limit of 200 cycles)
-ok   r0.txt                             w=1 cycles=12    committed=6   
-ok   r0.txt                             w=2 cycles=10    committed=6   
-ok   r0.txt                             w=3 cycles=10    committed=6   
-ok   r0.txt                             w=4 cycles=10    committed=6   
-ok   sample_tc1.txt                     w=1 cycles=36    committed=17  
-ok   sample_tc1.txt                     w=2 cycles=33    committed=17  
-ok   sample_tc1.txt                     w=3 cycles=33    committed=17  
-ok   sample_tc1.txt                     w=4 cycles=33    committed=17  
-ok   sample_tc2.txt                     w=1 cycles=49    committed=17  
-ok   sample_tc2.txt                     w=2 cycles=47    committed=17  
-ok   sample_tc2.txt                     w=3 cycles=47    committed=17  
-ok   sample_tc2.txt                     w=4 cycles=47    committed=17  
-ok   squash_cdb.txt                     w=1 cycles=14    committed=6   
-ok   squash_cdb.txt                     w=2 cycles=12    committed=6   
-ok   squash_cdb.txt                     w=3 cycles=12    committed=6   
-ok   squash_cdb.txt                     w=4 cycles=11    committed=6    golden
-ok   structural.txt                     w=1 cycles=20    committed=8   
-ok   structural.txt                     w=2 cycles=19    committed=8   
-ok   structural.txt                     w=3 cycles=18    committed=8   
-ok   structural.txt                     w=4 cycles=18    committed=8   
-ok   wide.txt                           w=1 cycles=11    committed=8   
-ok   wide.txt                           w=2 cycles=7     committed=8   
-ok   wide.txt                           w=3 cycles=6     committed=8   
-ok   wide.txt                           w=4 cycles=5     committed=8   
-84 runs, 0 failed, 16 compared with hand-computed tables
+ok     btb_alias.txt                  default    w=1 cycles=10    committed=4    golden
+ok     btb_alias.txt                  default    w=2 cycles=10    committed=4    golden
+ok     btb_alias.txt                  default    w=3 cycles=10    committed=4   
+ok     btb_alias.txt                  default    w=4 cycles=10    committed=4    golden
+ok     btb_alias.txt                  one-cdb    w=1 cycles=10    committed=4   
+ok     btb_alias.txt                  one-cdb    w=2 cycles=10    committed=4   
+ok     btb_alias.txt                  one-cdb    w=3 cycles=10    committed=4   
+ok     btb_alias.txt                  one-cdb    w=4 cycles=10    committed=4   
+ok     btb_alias.txt                  issue-only w=1 cycles=10    committed=4   
+ok     btb_alias.txt                  issue-only w=2 cycles=10    committed=4   
+ok     btb_alias.txt                  issue-only w=3 cycles=10    committed=4   
+ok     btb_alias.txt                  issue-only w=4 cycles=10    committed=4   
+ok     bug1_rat_overwrite.txt         default    w=1 cycles=37    committed=7   
+ok     bug1_rat_overwrite.txt         default    w=2 cycles=36    committed=7   
+ok     bug1_rat_overwrite.txt         default    w=3 cycles=36    committed=7   
+ok     bug1_rat_overwrite.txt         default    w=4 cycles=36    committed=7   
+ok     bug1_rat_overwrite.txt         one-cdb    w=1 cycles=37    committed=7   
+ok     bug1_rat_overwrite.txt         one-cdb    w=2 cycles=36    committed=7   
+ok     bug1_rat_overwrite.txt         one-cdb    w=3 cycles=36    committed=7   
+ok     bug1_rat_overwrite.txt         one-cdb    w=4 cycles=36    committed=7   
+ok     bug1_rat_overwrite.txt         issue-only w=1 cycles=37    committed=7   
+ok     bug1_rat_overwrite.txt         issue-only w=2 cycles=37    committed=7   
+ok     bug1_rat_overwrite.txt         issue-only w=3 cycles=37    committed=7   
+ok     bug1_rat_overwrite.txt         issue-only w=4 cycles=37    committed=7   
+ok     bug2_store_before_commit.txt   default    w=1 cycles=23    committed=3   
+ok     bug2_store_before_commit.txt   default    w=2 cycles=23    committed=3   
+ok     bug2_store_before_commit.txt   default    w=3 cycles=23    committed=3   
+ok     bug2_store_before_commit.txt   default    w=4 cycles=23    committed=3   
+ok     bug2_store_before_commit.txt   one-cdb    w=1 cycles=23    committed=3   
+ok     bug2_store_before_commit.txt   one-cdb    w=2 cycles=23    committed=3   
+ok     bug2_store_before_commit.txt   one-cdb    w=3 cycles=23    committed=3   
+ok     bug2_store_before_commit.txt   one-cdb    w=4 cycles=23    committed=3   
+ok     bug2_store_before_commit.txt   issue-only w=1 cycles=23    committed=3   
+ok     bug2_store_before_commit.txt   issue-only w=2 cycles=23    committed=3   
+ok     bug2_store_before_commit.txt   issue-only w=3 cycles=23    committed=3   
+ok     bug2_store_before_commit.txt   issue-only w=4 cycles=23    committed=3   
+ok     bug3_forward_same_cycle.txt    default    w=1 cycles=14    committed=3   
+ok     bug3_forward_same_cycle.txt    default    w=2 cycles=13    committed=3   
+ok     bug3_forward_same_cycle.txt    default    w=3 cycles=13    committed=3   
+ok     bug3_forward_same_cycle.txt    default    w=4 cycles=13    committed=3   
+ok     bug3_forward_same_cycle.txt    one-cdb    w=1 cycles=14    committed=3   
+ok     bug3_forward_same_cycle.txt    one-cdb    w=2 cycles=13    committed=3   
+ok     bug3_forward_same_cycle.txt    one-cdb    w=3 cycles=13    committed=3   
+ok     bug3_forward_same_cycle.txt    one-cdb    w=4 cycles=13    committed=3   
+ok     bug3_forward_same_cycle.txt    issue-only w=1 cycles=14    committed=3   
+ok     bug3_forward_same_cycle.txt    issue-only w=2 cycles=14    committed=3   
+ok     bug3_forward_same_cycle.txt    issue-only w=3 cycles=14    committed=3   
+ok     bug3_forward_same_cycle.txt    issue-only w=4 cycles=14    committed=3   
+ok     bug4_double_advance.txt        default    w=1 cycles=26    committed=3   
+ok     bug4_double_advance.txt        default    w=2 cycles=25    committed=3   
+ok     bug4_double_advance.txt        default    w=3 cycles=25    committed=3   
+ok     bug4_double_advance.txt        default    w=4 cycles=25    committed=3   
+ok     bug4_double_advance.txt        one-cdb    w=1 cycles=26    committed=3   
+ok     bug4_double_advance.txt        one-cdb    w=2 cycles=25    committed=3   
+ok     bug4_double_advance.txt        one-cdb    w=3 cycles=25    committed=3   
+ok     bug4_double_advance.txt        one-cdb    w=4 cycles=25    committed=3   
+ok     bug4_double_advance.txt        issue-only w=1 cycles=26    committed=3   
+ok     bug4_double_advance.txt        issue-only w=2 cycles=25    committed=3   
+ok     bug4_double_advance.txt        issue-only w=3 cycles=25    committed=3   
+ok     bug4_double_advance.txt        issue-only w=4 cycles=25    committed=3   
+ok     bug5_empty_rob_crash.txt       default    w=1 cycles=20    committed=7   
+ok     bug5_empty_rob_crash.txt       default    w=2 cycles=20    committed=7   
+ok     bug5_empty_rob_crash.txt       default    w=3 cycles=20    committed=7   
+ok     bug5_empty_rob_crash.txt       default    w=4 cycles=20    committed=7   
+ok     bug5_empty_rob_crash.txt       one-cdb    w=1 cycles=20    committed=7   
+ok     bug5_empty_rob_crash.txt       one-cdb    w=2 cycles=20    committed=7   
+ok     bug5_empty_rob_crash.txt       one-cdb    w=3 cycles=20    committed=7   
+ok     bug5_empty_rob_crash.txt       one-cdb    w=4 cycles=20    committed=7   
+ok     bug5_empty_rob_crash.txt       issue-only w=1 cycles=20    committed=7   
+ok     bug5_empty_rob_crash.txt       issue-only w=2 cycles=20    committed=7   
+ok     bug5_empty_rob_crash.txt       issue-only w=3 cycles=20    committed=7   
+ok     bug5_empty_rob_crash.txt       issue-only w=4 cycles=20    committed=7   
+ok     cdb_limit.txt                  default    w=1 cycles=11    committed=8   
+ok     cdb_limit.txt                  default    w=2 cycles=11    committed=8   
+ok     cdb_limit.txt                  default    w=3 cycles=11    committed=8   
+ok     cdb_limit.txt                  default    w=4 cycles=11    committed=8   
+ok     cdb_limit.txt                  one-cdb    w=1 cycles=11    committed=8   
+ok     cdb_limit.txt                  one-cdb    w=2 cycles=11    committed=8   
+ok     cdb_limit.txt                  one-cdb    w=3 cycles=11    committed=8   
+ok     cdb_limit.txt                  one-cdb    w=4 cycles=11    committed=8   
+ok     cdb_limit.txt                  issue-only w=1 cycles=11    committed=8   
+ok     cdb_limit.txt                  issue-only w=2 cycles=11    committed=8   
+ok     cdb_limit.txt                  issue-only w=3 cycles=11    committed=8   
+ok     cdb_limit.txt                  issue-only w=4 cycles=11    committed=8   
+ok     chain.txt                      default    w=1 cycles=22    committed=6   
+ok     chain.txt                      default    w=2 cycles=22    committed=6   
+ok     chain.txt                      default    w=3 cycles=22    committed=6   
+ok     chain.txt                      default    w=4 cycles=22    committed=6   
+ok     chain.txt                      one-cdb    w=1 cycles=22    committed=6   
+ok     chain.txt                      one-cdb    w=2 cycles=22    committed=6   
+ok     chain.txt                      one-cdb    w=3 cycles=22    committed=6   
+ok     chain.txt                      one-cdb    w=4 cycles=22    committed=6   
+ok     chain.txt                      issue-only w=1 cycles=22    committed=6   
+ok     chain.txt                      issue-only w=2 cycles=22    committed=6   
+ok     chain.txt                      issue-only w=3 cycles=22    committed=6   
+ok     chain.txt                      issue-only w=4 cycles=22    committed=6   
+ok     daxpy.txt                      default    w=1 cycles=41    committed=28  
+ok     daxpy.txt                      default    w=2 cycles=32    committed=28  
+ok     daxpy.txt                      default    w=3 cycles=31    committed=28  
+ok     daxpy.txt                      default    w=4 cycles=31    committed=28  
+ok     daxpy.txt                      one-cdb    w=1 cycles=41    committed=28  
+ok     daxpy.txt                      one-cdb    w=2 cycles=34    committed=28  
+ok     daxpy.txt                      one-cdb    w=3 cycles=33    committed=28  
+ok     daxpy.txt                      one-cdb    w=4 cycles=33    committed=28  
+ok     daxpy.txt                      issue-only w=1 cycles=41    committed=28  
+ok     daxpy.txt                      issue-only w=2 cycles=41    committed=28  
+ok     daxpy.txt                      issue-only w=3 cycles=41    committed=28  
+ok     daxpy.txt                      issue-only w=4 cycles=41    committed=28  
+ok     dispatch_order.txt             default    w=1 cycles=8     committed=4    golden
+ok     dispatch_order.txt             default    w=2 cycles=8     committed=4    golden
+ok     dispatch_order.txt             default    w=3 cycles=8     committed=4   
+ok     dispatch_order.txt             default    w=4 cycles=8     committed=4    golden
+ok     dispatch_order.txt             one-cdb    w=1 cycles=8     committed=4   
+ok     dispatch_order.txt             one-cdb    w=2 cycles=8     committed=4   
+ok     dispatch_order.txt             one-cdb    w=3 cycles=8     committed=4   
+ok     dispatch_order.txt             one-cdb    w=4 cycles=8     committed=4   
+ok     dispatch_order.txt             issue-only w=1 cycles=8     committed=4   
+ok     dispatch_order.txt             issue-only w=2 cycles=8     committed=4   
+ok     dispatch_order.txt             issue-only w=3 cycles=8     committed=4   
+ok     dispatch_order.txt             issue-only w=4 cycles=8     committed=4   
+ok     independent.txt                default    w=1 cycles=12    committed=6    golden
+ok     independent.txt                default    w=2 cycles=9     committed=6    golden
+ok     independent.txt                default    w=3 cycles=8     committed=6   
+ok     independent.txt                default    w=4 cycles=8     committed=6    golden
+ok     independent.txt                one-cdb    w=1 cycles=12    committed=6   
+ok     independent.txt                one-cdb    w=2 cycles=9     committed=6   
+ok     independent.txt                one-cdb    w=3 cycles=9     committed=6   
+ok     independent.txt                one-cdb    w=4 cycles=9     committed=6   
+ok     independent.txt                issue-only w=1 cycles=12    committed=6   
+ok     independent.txt                issue-only w=2 cycles=10    committed=6   
+ok     independent.txt                issue-only w=3 cycles=10    committed=6   
+ok     independent.txt                issue-only w=4 cycles=10    committed=6   
+ok     loop.txt                       default    w=1 cycles=16    committed=6    golden
+ok     loop.txt                       default    w=2 cycles=16    committed=6    golden
+ok     loop.txt                       default    w=3 cycles=16    committed=6   
+ok     loop.txt                       default    w=4 cycles=16    committed=6    golden
+ok     loop.txt                       one-cdb    w=1 cycles=16    committed=6   
+ok     loop.txt                       one-cdb    w=2 cycles=16    committed=6   
+ok     loop.txt                       one-cdb    w=3 cycles=16    committed=6   
+ok     loop.txt                       one-cdb    w=4 cycles=16    committed=6   
+ok     loop.txt                       issue-only w=1 cycles=16    committed=6   
+ok     loop.txt                       issue-only w=2 cycles=16    committed=6   
+ok     loop.txt                       issue-only w=3 cycles=16    committed=6   
+ok     loop.txt                       issue-only w=4 cycles=16    committed=6   
+ok     memory.txt                     default    w=1 cycles=16    committed=7    golden
+ok     memory.txt                     default    w=2 cycles=14    committed=7    golden
+ok     memory.txt                     default    w=3 cycles=14    committed=7   
+ok     memory.txt                     default    w=4 cycles=14    committed=7    golden
+ok     memory.txt                     one-cdb    w=1 cycles=16    committed=7   
+ok     memory.txt                     one-cdb    w=2 cycles=14    committed=7   
+ok     memory.txt                     one-cdb    w=3 cycles=14    committed=7   
+ok     memory.txt                     one-cdb    w=4 cycles=14    committed=7   
+ok     memory.txt                     issue-only w=1 cycles=16    committed=7   
+ok     memory.txt                     issue-only w=2 cycles=15    committed=7   
+ok     memory.txt                     issue-only w=3 cycles=15    committed=7   
+ok     memory.txt                     issue-only w=4 cycles=15    committed=7   
+ok     memory_violation.txt           default    w=1 cycles=18    committed=4    golden
+ok     memory_violation.txt           default    w=2 cycles=18    committed=4    golden
+ok     memory_violation.txt           default    w=3 cycles=18    committed=4   
+ok     memory_violation.txt           default    w=4 cycles=18    committed=4    golden
+ok     memory_violation.txt           one-cdb    w=1 cycles=18    committed=4   
+ok     memory_violation.txt           one-cdb    w=2 cycles=18    committed=4   
+ok     memory_violation.txt           one-cdb    w=3 cycles=18    committed=4   
+ok     memory_violation.txt           one-cdb    w=4 cycles=18    committed=4   
+ok     memory_violation.txt           issue-only w=1 cycles=18    committed=4   
+ok     memory_violation.txt           issue-only w=2 cycles=18    committed=4   
+ok     memory_violation.txt           issue-only w=3 cycles=18    committed=4   
+ok     memory_violation.txt           issue-only w=4 cycles=18    committed=4   
+ok     original.txt                   default    w=1 cycles=41    committed=15  
+ok     original.txt                   default    w=2 cycles=35    committed=15  
+ok     original.txt                   default    w=3 cycles=34    committed=15  
+ok     original.txt                   default    w=4 cycles=34    committed=15  
+ok     original.txt                   one-cdb    w=1 cycles=41    committed=15  
+ok     original.txt                   one-cdb    w=2 cycles=35    committed=15  
+ok     original.txt                   one-cdb    w=3 cycles=34    committed=15  
+ok     original.txt                   one-cdb    w=4 cycles=34    committed=15  
+ok     original.txt                   issue-only w=1 cycles=41    committed=15  
+ok     original.txt                   issue-only w=2 cycles=41    committed=15  
+ok     original.txt                   issue-only w=3 cycles=41    committed=15  
+ok     original.txt                   issue-only w=4 cycles=41    committed=15  
+prefix pdf_sample.txt                 default    w=1 cycles=200   committed=145  (stopped: reached the limit of 200 cycles)
+prefix pdf_sample.txt                 default    w=2 cycles=200   committed=147  (stopped: reached the limit of 200 cycles)
+prefix pdf_sample.txt                 default    w=3 cycles=200   committed=148  (stopped: reached the limit of 200 cycles)
+prefix pdf_sample.txt                 default    w=4 cycles=200   committed=148  (stopped: reached the limit of 200 cycles)
+prefix pdf_sample.txt                 one-cdb    w=1 cycles=200   committed=145  (stopped: reached the limit of 200 cycles)
+prefix pdf_sample.txt                 one-cdb    w=2 cycles=200   committed=147  (stopped: reached the limit of 200 cycles)
+prefix pdf_sample.txt                 one-cdb    w=3 cycles=200   committed=148  (stopped: reached the limit of 200 cycles)
+prefix pdf_sample.txt                 one-cdb    w=4 cycles=200   committed=148  (stopped: reached the limit of 200 cycles)
+prefix pdf_sample.txt                 issue-only w=1 cycles=200   committed=145  (stopped: reached the limit of 200 cycles)
+prefix pdf_sample.txt                 issue-only w=2 cycles=200   committed=146  (stopped: reached the limit of 200 cycles)
+prefix pdf_sample.txt                 issue-only w=3 cycles=200   committed=146  (stopped: reached the limit of 200 cycles)
+prefix pdf_sample.txt                 issue-only w=4 cycles=200   committed=146  (stopped: reached the limit of 200 cycles)
+ok     precision.txt                  default    w=1 cycles=14    committed=7   
+ok     precision.txt                  default    w=2 cycles=13    committed=7   
+ok     precision.txt                  default    w=3 cycles=13    committed=7   
+ok     precision.txt                  default    w=4 cycles=13    committed=7   
+ok     precision.txt                  one-cdb    w=1 cycles=14    committed=7   
+ok     precision.txt                  one-cdb    w=2 cycles=13    committed=7   
+ok     precision.txt                  one-cdb    w=3 cycles=13    committed=7   
+ok     precision.txt                  one-cdb    w=4 cycles=13    committed=7   
+ok     precision.txt                  issue-only w=1 cycles=14    committed=7   
+ok     precision.txt                  issue-only w=2 cycles=13    committed=7   
+ok     precision.txt                  issue-only w=3 cycles=13    committed=7   
+ok     precision.txt                  issue-only w=4 cycles=13    committed=7   
+ok     r0.txt                         default    w=1 cycles=12    committed=6   
+ok     r0.txt                         default    w=2 cycles=10    committed=6   
+ok     r0.txt                         default    w=3 cycles=10    committed=6   
+ok     r0.txt                         default    w=4 cycles=10    committed=6   
+ok     r0.txt                         one-cdb    w=1 cycles=12    committed=6   
+ok     r0.txt                         one-cdb    w=2 cycles=10    committed=6   
+ok     r0.txt                         one-cdb    w=3 cycles=10    committed=6   
+ok     r0.txt                         one-cdb    w=4 cycles=10    committed=6   
+ok     r0.txt                         issue-only w=1 cycles=12    committed=6   
+ok     r0.txt                         issue-only w=2 cycles=10    committed=6   
+ok     r0.txt                         issue-only w=3 cycles=10    committed=6   
+ok     r0.txt                         issue-only w=4 cycles=10    committed=6   
+ok     sample_tc1.txt                 default    w=1 cycles=36    committed=17  
+ok     sample_tc1.txt                 default    w=2 cycles=33    committed=17  
+ok     sample_tc1.txt                 default    w=3 cycles=33    committed=17  
+ok     sample_tc1.txt                 default    w=4 cycles=33    committed=17  
+ok     sample_tc1.txt                 one-cdb    w=1 cycles=36    committed=17  
+ok     sample_tc1.txt                 one-cdb    w=2 cycles=35    committed=17  
+ok     sample_tc1.txt                 one-cdb    w=3 cycles=35    committed=17  
+ok     sample_tc1.txt                 one-cdb    w=4 cycles=35    committed=17  
+ok     sample_tc1.txt                 issue-only w=1 cycles=36    committed=17  
+ok     sample_tc1.txt                 issue-only w=2 cycles=36    committed=17  
+ok     sample_tc1.txt                 issue-only w=3 cycles=36    committed=17  
+ok     sample_tc1.txt                 issue-only w=4 cycles=36    committed=17  
+ok     sample_tc2.txt                 default    w=1 cycles=49    committed=17  
+ok     sample_tc2.txt                 default    w=2 cycles=47    committed=17  
+ok     sample_tc2.txt                 default    w=3 cycles=47    committed=17  
+ok     sample_tc2.txt                 default    w=4 cycles=47    committed=17  
+ok     sample_tc2.txt                 one-cdb    w=1 cycles=49    committed=17  
+ok     sample_tc2.txt                 one-cdb    w=2 cycles=47    committed=17  
+ok     sample_tc2.txt                 one-cdb    w=3 cycles=47    committed=17  
+ok     sample_tc2.txt                 one-cdb    w=4 cycles=47    committed=17  
+ok     sample_tc2.txt                 issue-only w=1 cycles=49    committed=17  
+ok     sample_tc2.txt                 issue-only w=2 cycles=47    committed=17  
+ok     sample_tc2.txt                 issue-only w=3 cycles=47    committed=17  
+ok     sample_tc2.txt                 issue-only w=4 cycles=47    committed=17  
+ok     squash_cdb.txt                 default    w=1 cycles=14    committed=6   
+ok     squash_cdb.txt                 default    w=2 cycles=12    committed=6   
+ok     squash_cdb.txt                 default    w=3 cycles=12    committed=6   
+ok     squash_cdb.txt                 default    w=4 cycles=11    committed=6    golden
+ok     squash_cdb.txt                 one-cdb    w=1 cycles=14    committed=6   
+ok     squash_cdb.txt                 one-cdb    w=2 cycles=12    committed=6   
+ok     squash_cdb.txt                 one-cdb    w=3 cycles=12    committed=6   
+ok     squash_cdb.txt                 one-cdb    w=4 cycles=11    committed=6   
+ok     squash_cdb.txt                 issue-only w=1 cycles=14    committed=6   
+ok     squash_cdb.txt                 issue-only w=2 cycles=12    committed=6   
+ok     squash_cdb.txt                 issue-only w=3 cycles=12    committed=6   
+ok     squash_cdb.txt                 issue-only w=4 cycles=11    committed=6   
+ok     structural.txt                 default    w=1 cycles=20    committed=8   
+ok     structural.txt                 default    w=2 cycles=19    committed=8   
+ok     structural.txt                 default    w=3 cycles=18    committed=8   
+ok     structural.txt                 default    w=4 cycles=18    committed=8   
+ok     structural.txt                 one-cdb    w=1 cycles=20    committed=8   
+ok     structural.txt                 one-cdb    w=2 cycles=19    committed=8   
+ok     structural.txt                 one-cdb    w=3 cycles=18    committed=8   
+ok     structural.txt                 one-cdb    w=4 cycles=18    committed=8   
+ok     structural.txt                 issue-only w=1 cycles=20    committed=8   
+ok     structural.txt                 issue-only w=2 cycles=20    committed=8   
+ok     structural.txt                 issue-only w=3 cycles=20    committed=8   
+ok     structural.txt                 issue-only w=4 cycles=20    committed=8   
+ok     unaligned.txt                  default    w=1 cycles=17    committed=7   
+ok     unaligned.txt                  default    w=2 cycles=15    committed=7   
+ok     unaligned.txt                  default    w=3 cycles=15    committed=7   
+ok     unaligned.txt                  default    w=4 cycles=15    committed=7   
+ok     unaligned.txt                  one-cdb    w=1 cycles=17    committed=7   
+ok     unaligned.txt                  one-cdb    w=2 cycles=15    committed=7   
+ok     unaligned.txt                  one-cdb    w=3 cycles=15    committed=7   
+ok     unaligned.txt                  one-cdb    w=4 cycles=15    committed=7   
+ok     unaligned.txt                  issue-only w=1 cycles=17    committed=7   
+ok     unaligned.txt                  issue-only w=2 cycles=17    committed=7   
+ok     unaligned.txt                  issue-only w=3 cycles=17    committed=7   
+ok     unaligned.txt                  issue-only w=4 cycles=17    committed=7   
+ok     violation_forward.txt          default    w=1 cycles=17    committed=5   
+ok     violation_forward.txt          default    w=2 cycles=16    committed=5   
+ok     violation_forward.txt          default    w=3 cycles=15    committed=5   
+ok     violation_forward.txt          default    w=4 cycles=15    committed=5   
+ok     violation_forward.txt          one-cdb    w=1 cycles=17    committed=5   
+ok     violation_forward.txt          one-cdb    w=2 cycles=17    committed=5   
+ok     violation_forward.txt          one-cdb    w=3 cycles=16    committed=5   
+ok     violation_forward.txt          one-cdb    w=4 cycles=16    committed=5   
+ok     violation_forward.txt          issue-only w=1 cycles=17    committed=5   
+ok     violation_forward.txt          issue-only w=2 cycles=17    committed=5   
+ok     violation_forward.txt          issue-only w=3 cycles=16    committed=5   
+ok     violation_forward.txt          issue-only w=4 cycles=16    committed=5   
+ok     wide.txt                       default    w=1 cycles=11    committed=8   
+ok     wide.txt                       default    w=2 cycles=7     committed=8   
+ok     wide.txt                       default    w=3 cycles=6     committed=8   
+ok     wide.txt                       default    w=4 cycles=5     committed=8   
+ok     wide.txt                       one-cdb    w=1 cycles=11    committed=8   
+ok     wide.txt                       one-cdb    w=2 cycles=11    committed=8   
+ok     wide.txt                       one-cdb    w=3 cycles=11    committed=8   
+ok     wide.txt                       one-cdb    w=4 cycles=11    committed=8   
+ok     wide.txt                       issue-only w=1 cycles=11    committed=8   
+ok     wide.txt                       issue-only w=2 cycles=11    committed=8   
+ok     wide.txt                       issue-only w=3 cycles=11    committed=8   
+ok     wide.txt                       issue-only w=4 cycles=11    committed=8   
+300 runs: 288 ok (final state checked), 12 prefix (program never ends, committed prefix checked), 0 failed; 19 compared with hand-computed tables

@@ -108,4 +108,5 @@ def exe(cycle, st):
             st.results_buffer.append(fu_result(rob, calculate(rob.ins.op, op.value1, op.value2), cycle))
     '''misprediction: the oldest one squashes everything younger, including younger branches'''
     if mispredicted:
-        squash(st, min(mispredicted, key=lambda rob: rob.seq), cycle)
+        branch = min(mispredicted, key=lambda rob: rob.seq)
+        squash(st, branch.seq, branch.actual_next, cycle)

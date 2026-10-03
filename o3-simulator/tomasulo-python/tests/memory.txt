@@ -1,6 +1,8 @@
 # Loads and stores. The slow Mult.d keeps the stores from committing early, so
-# loads can forward from them; the store to 0(R2) has no address until the Addi
-# finishes, and younger loads wait for it; stores write memory at commit.
+# loads can forward from them. The store to 0(R2) has no address until the Addi
+# finishes; Ld F5, 0(R0) does not wait for it (as the handout says) and reads
+# memory, Ld F4, 4(R1) has that store's address and forwards from it once the
+# address is known. Stores write memory at commit.
                # of rs   Cycles in EX   Cycles in Mem   # of FUs
 Integer adder   2         2                              1
 FP adder        2         2                              1

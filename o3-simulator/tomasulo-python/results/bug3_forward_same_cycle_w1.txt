@@ -6,8 +6,8 @@ Load/store unit   5         1              5              1
 ROB entries = 64, Issue width = 1, CDB buses = 1, Commit width = 1
 
               ISSUE   EX          MEM         WB      COMMIT  NOTE
-Ld F8 0(R2)   [1]     [2, 2]      [3, 7]      [8]     [9]     
-Sd F20 4(R1)  [2]     [3, 3]      [10, 14]    []      [10]    
+Ld F8 0(R2)   [1]     [2, 2]      [3, 7]      [8]     [9]
+Sd F20 4(R1)  [2]     [3, 3]      [10, 14]    []      [10]
 Ld F2 4(R1)   [3]     [4, 4]      [5, 5]      [6]     [11]    forwarded
 
 REGISTER VALUES
@@ -38,4 +38,4 @@ Addresses   Values
 28          5.0
 32          4.0
 
-Cycles: 14, committed instructions: 3, IPC: 0.214, branches: 0, mispredicted: 0, squashed instructions: 0
+Cycles: 14, committed instructions: 3, IPC: 0.214, branches: 0, mispredicted: 0, memory-order violations: 0, squashed instructions: 0

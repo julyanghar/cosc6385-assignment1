@@ -36,11 +36,26 @@ MUTANTS = [
      '            and (st.mem_busy_until < cycle)', '            and True'),
     ('no limit on commit width', 'commit.py',
      'for _ in range(st.commit_width):', 'for _ in range(64):'),
-    ('forward from the oldest matching store', 'mem.py',
-     'if element.address == load.address:\n                match = element     # keep the youngest',
-     'if element.address == load.address and match is None:\n                match = element'),
-    ('load passes stores with unknown addresses', 'mem.py',
-     'return None, False', 'continue'),
+    ('forward from the oldest overlapping store', 'mem.py',
+     'match = element     # keep the youngest', 'match = match or element'),
+    ('loads wait for every older store address (the old rule)', 'mem.py',
+     "if (element.op == 'Sd') and (element.ready == 1) and (element.ready_cycle < cycle) \\\n"
+     "                and overlap(element.address, load.address):",
+     "if (element.op == 'Sd') and ((element.ready == 0) or (element.ready_cycle >= cycle)\n"
+     "                                      or overlap(element.address, load.address)):"),
+    ('partly overlapping stores ignored (only the same address counts)', 'mem.py',
+     'and overlap(element.address, load.address):', 'and element.address == load.address:'),
+    ('no memory-order check', 'mem.py',
+     'victim = check_memory_order(st, cycle)', 'victim = None'),
+    ('replay starts after the load instead of at it', 'mem.py',
+     'squash(st, victim.seq - 1, victim.PC, cycle)', 'squash(st, victim.seq, victim.PC + 1, cycle)'),
+    ('a load that forwarded is never replayed', 'mem.py',
+     'if rob.forwarded and (rob.forwarded_from.seq > store.rob.seq):', 'if rob.forwarded:'),
+    ('forwarded value not rounded to single precision', 'mem.py',
+     'fu_result(element.rob, to_single(store.data), cycle)', 'fu_result(element.rob, store.data, cycle)'),
+    ('register values printed with 6 decimals (as before the review)', 'print_status.py',
+     '    if type(value) == float:\n        return repr(value)',
+     '    if type(value) == float:\n        return str(round(value, 6))'),
     ('forwarding in the same cycle as the address calculation', 'mem.py',
      "(element.ready == 0) or (element.ready_cycle >= cycle) \\\n                or (element.in_memory == 1)",
      "(element.ready == 0) or (element.in_memory == 1)"),
@@ -93,7 +108,7 @@ def main():
             by_fuzz = fuzz.returncode != 0
             if by_tests or by_fuzz:
                 caught += 1
-            print('%-7s %-62s tests: %-6s fuzz: %s' % (
+            print('%-7s %-66s tests: %-6s fuzz: %s' % (
                 'caught' if by_tests or by_fuzz else 'MISSED', description,
                 'fail' if by_tests else 'pass', 'fail' if by_fuzz else 'pass'))
     print('%d of %d mutants caught' % (caught, len(MUTANTS)))

@@ -15,14 +15,14 @@ in_flight entry: rob | unit | end (last EX cycle) | value1 | value2
 >> Ld/Sd --> FIFO queue
 ld_sd_tag | op | dest_tag | rob | immediate | reg_tag | reg_value | valid | started | ready | ready_cycle | address | data | data_valid | data_cycle | in_memory
 
->> Memory --> one access at a time
-mem_busy_until (last cycle of the current access) | mem_load (load using it)
+>> Memory --> bytearray(256): a value takes 4 bytes (single precision, little-endian)
+one access at a time: mem_busy_until (last cycle of the current access) | mem_load (load using it)
 
 >> results_buffer --> list, waiting for a CDB
 rob | value | ready (cycle produced)
 
 >> ROB --> FIFO queue
-ROB_tag | seq | PC | ins | value | done | dest_tag | issue | exe | mem | cdb | commit | lsq | pred_next | actual_next | taken | mispredicted | forwarded | error
+ROB_tag | seq | PC | ins | value | done | dest_tag | issue | exe | mem | cdb | commit | lsq | pred_next | actual_next | taken | mispredicted | forwarded | forwarded_from | replayed | error
 
 >> BTB --> 8 entries, index = PC mod 8
 valid | pc | target | taken (1-bit predictor)

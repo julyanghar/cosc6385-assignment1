@@ -1,13 +1,25 @@
 # Functional reference: runs the program one instruction at a time, in program
 # order, with no timing, no renaming and no speculation. The simulator must end
 # with the same registers and memory and commit the same instruction sequence.
-# Only the input parser (init.read_input) is shared with the simulator.
+# Only the input parser (init.read_input) is shared with the simulator; the
+# memory is written here again: 256 bytes, Ld/Sd move 4-byte little-endian
+# single-precision values, a value too large for single precision becomes
+# infinity.
 
+import math
 import os
+import struct
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'code'))
 from init import read_input
+
+
+def single_bytes(value):
+    try:
+        return struct.pack('<f', value)
+    except OverflowError:
+        return struct.pack('<f', math.copysign(math.inf, value))
 
 
 def run_reference(path, max_steps=100000):
@@ -16,9 +28,9 @@ def run_reference(path, max_steps=100000):
     F = [0.0] * 32
     for reg, value in reg_init.items():
         (R if reg[0] == 'R' else F)[int(reg[1:])] = value
-    M = [0] * 256
+    M = bytearray(256)
     for address, value in mem_init.items():
-        M[address] = value
+        M[address:address + 4] = single_bytes(value)
 
     def get(reg):
         return R[int(reg[1:])] if reg[0] == 'R' else F[int(reg[1:])]
@@ -33,7 +45,7 @@ def run_reference(path, max_steps=100000):
 
     def address_of(ins):
         address = get(ins.base) + ins.imm
-        if not (0 <= address < 256):
+        if not (0 <= address and address + 4 <= 256):
             raise ValueError('invalid address %d in "%s"' % (address, ins.text))
         return address
 
@@ -45,9 +57,11 @@ def run_reference(path, max_steps=100000):
         op = ins.op
         next_pc = pc + 1
         if op == 'Ld':
-            put(ins.dest, float(M[address_of(ins)]))
+            a = address_of(ins)
+            put(ins.dest, struct.unpack('<f', bytes(M[a:a + 4]))[0])
         elif op == 'Sd':
-            M[address_of(ins)] = get(ins.src1)
+            a = address_of(ins)
+            M[a:a + 4] = single_bytes(get(ins.src1))
         elif op == 'Beq':
             if get(ins.src1) == get(ins.src2):
                 next_pc = pc + 1 + ins.imm

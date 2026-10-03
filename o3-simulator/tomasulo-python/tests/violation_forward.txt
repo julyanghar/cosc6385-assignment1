@@ -1,0 +1,20 @@
+# The load forwards 1.5 from the first store while the second store, which is
+# younger than the first but older than the load, has no address yet. That
+# store also writes address 8, so the load's value is stale: when its address
+# is known the load is replayed and forwards 2.5 from it. The slow Mult.d keeps
+# both stores in the queue. Final F3 = 2.5.
+               # of rs   Cycles in EX   Cycles in Mem   # of FUs
+Integer adder   2         4                              1
+FP adder        2         2                              1
+FP multiplier   1         4                              1
+Load/store unit 6         1              2               1
+
+ROB entries = 16
+R1=8, F1=1.5, F2=2.5
+Mem[8]=10.0
+
+Mult.d F6, F1, F1
+Sd F1, 0(R1)
+Addi R2, R1, 0
+Sd F2, 0(R2)
+Ld F3, 0(R1)

@@ -34,6 +34,10 @@ def put_ins_into_ROB(st, cycle, ins):
     st.seq += 1
     entry.PC = st.PC
     entry.ins = ins
+    # the load of a memory-order violation, fetched again
+    if st.replay_pc == st.PC:
+        entry.replayed = 1
+        st.replay_pc = None
     # dest_tag: destination register; never R0, which is hardwired to 0
     if ins.dest != 'R0':
         entry.dest_tag = ins.dest

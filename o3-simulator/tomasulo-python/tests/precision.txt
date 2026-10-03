@@ -1,0 +1,21 @@
+# Ld and Sd move single-precision values; registers keep Python floats (double
+# precision). 16777217 = 2^24 + 1 is not a single-precision number: the store
+# writes 16777216, and the forwarded load gets the same. Mem[0] = 3.4 is held as
+# the single-precision number nearest to 3.4. 1e-07 must not print as 0.
+               # of rs   Cycles in EX   Cycles in Mem   # of FUs
+Integer adder   2         1                              1
+FP adder        2         2                              1
+FP multiplier   1         4                              1
+Load/store unit 4         1              2               1
+
+ROB entries = 16
+F1=16777216, F2=1, F3=0.0000001
+Mem[0]=3.4
+
+Add.d F5, F1, F2
+Sd F5, 4(R0)
+Ld F6, 4(R0)
+Ld F7, 0(R0)
+Sd F3, 8(R0)
+Ld F8, 8(R0)
+Mult.d F9, F7, F2
