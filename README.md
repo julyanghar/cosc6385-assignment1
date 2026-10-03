@@ -10,6 +10,11 @@ Main result: **7.758 MPKI** averaged over the 20 traces (bimodal predictor alone
 10.267; always predicting taken: 86.311). Design, verification and analysis are in
 [REPORT.md](REPORT.md).
 
+**Part 2** of Assignment 1, the Tomasulo simulator with multiple issue (handout
+`programming-tomasulo.pdf`), is in [`o3-simulator/`](o3-simulator/), with its own
+[README](o3-simulator/README.md) and [REPORT](o3-simulator/REPORT.md). The rest of this
+file is about part 1.
+
 ## Repository layout
 
 ```text
