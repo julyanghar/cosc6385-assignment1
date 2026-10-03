@@ -1,167 +1,111 @@
 # Qing 
 # 24th May 2017
+# COSC 6385, Oct 2026: several FUs per type, pipelined and unpipelined FUs,
+# oldest-first dispatch, branch resolution with misprediction recovery.
 
-''' 
-1. calculate valid instructions
-    -- for ALU instructions, write results into fu_results, remove that fu entry  
-    -- for LD/SD, write address result immediately back to ld_sd_queue
-2. fetch instructions into function unit with spare space
-    -- remove ALU instructions from rs
-    -- don't remove ld/sd instructions
+'''
+1. dispatch: move ready instructions from the reservation stations into free
+   functional units, oldest first; start address calculations of loads/stores
+   whose base register is ready (dedicated address adders, not the integer ALU)
+2. finish instructions whose last EX cycle is this cycle
+    -- ALU instructions: result into results_buffer (CDB from next cycle)
+    -- loads/stores: address written into the ld_sd_queue entry
+    -- branches: compare, update the BTB; on a misprediction squash the younger
+       instructions (squash.py)
 '''
 from init import fu_entry, fu_result
+from squash import squash
 
-# function: check rs and return valid instruction index
-def check_valid_ins_in_rs(rs):
-    index = -1
-    if len(rs)!=0:
-        for i in range(len(rs)):
-            if (rs[i].valid_1st==1)&(rs[i].valid_2nd==1)&(rs[i].busy==1):
-                index = i
-                break
-    return index
+# function: check rs and return the ready instructions, oldest first
+def check_valid_ins_in_rs(rs, cycle):
+    ready = []
+    for element in rs:
+        # an instruction issued in this cycle starts EX next cycle at the earliest
+        if (element.busy == 1) and (element.valid_1st == 1) and (element.valid_2nd == 1) \
+                and (element.rob.issue[0] < cycle):
+            ready.append(element)
+    ready.sort(key=lambda element: element.rob.seq)
+    return ready
 
-# function: check ld_sd_queue and return valid instruction index
-def check_valid_ins_in_ldsd(ldsd):
-    index = -1
-    if len(ldsd)!=0:
-        for i in range(len(ldsd)):
-            if (ldsd[i].valid==1) & (ldsd[i].ready==0):
-                index = i
-                break
-    return index
+# function: check ld_sd_queue and return the entries ready for address calculation
+# (the queue is in program order, so this is oldest first)
+def check_valid_ins_in_ldsd(ldsd, cycle):
+    return [element for element in ldsd
+            if (element.valid == 1) and (element.started == 0) and (element.rob.issue[0] < cycle)]
 
-# function: add entry into fu 
-def add_entry_into_fu(fu, ins_in_rs):
-    fu[-1].cycle = 0
-    fu[-1].op = ins_in_rs.op
-    fu[-1].value1 = ins_in_rs.value_1st
-    fu[-1].value2 = ins_in_rs.value_2nd
-    fu[-1].dest_tag = ins_in_rs.dest_tag
+# function: a functional unit of this type that can start an instruction in this cycle
+def find_free_fu(units, cycle):
+    for unit in units:
+        if unit.next_free <= cycle:
+            return unit
+    return None
 
-# function: find ROB entry by tag
-def find_ROB_entry(ROB, tag):
-    for index in range(len(ROB)):
-        if ROB[index].ROB_tag == tag:
-            break
-    return index
+# function: start EX of one instruction on a functional unit
+def start_exe(st, kind, unit, rob, value1, value2, cycle):
+    end = cycle + st.ex_cycles[kind] - 1
+    # pipelined: a new instruction every cycle; unpipelined: busy until EX ends
+    unit.next_free = cycle + 1 if st.pipelined[kind] else end + 1
+    rob.exe = [cycle, end]
+    st.in_flight.append(fu_entry(rob, unit, end, value1, value2))
 
-# function: functional units execution 
-def fu_exe(fu, fu_results, ROB, time_fu, cycle, PC):
-    if len(fu)!=0:
-        for element in fu:
-            element.cycle += 1
-        # write starting cycle 
-        if fu[-1].cycle == 1:
-            index = find_ROB_entry(ROB, fu[-1].dest_tag)
-            ROB[index].exe.append(cycle)
-        # finish cycle
-        if fu[0].cycle == time_fu:
-            index = find_ROB_entry(ROB, fu[0].dest_tag)
-            ROB[index].exe.append(cycle)
-            # calculation result
-            fu_results.append(fu_result())
-            fu_results[-1].dest_tag = fu[0].dest_tag
-            if (fu[0].op=='Add')|(fu[0].op=='Add.d')|(fu[0].op=='Addi'):
-                fu_results[-1].value = fu[0].value1 + fu[0].value2
-            elif (fu[0].op=='Sub')|(fu[0].op=='Sub.d'):
-                fu_results[-1].value = fu[0].value1 - fu[0].value2
-            elif (fu[0].op=='Mult.d'):
-                fu_results[-1].value = fu[0].value1 * fu[0].value2
-            elif (fu[0].op=='Bne'):
-                fu_results.pop()
-                if fu[0].value1 == fu[0].value2:
-                    PC.PC += 1
-                    PC.valid = 1
-                else:
-                    index = find_ROB_entry(ROB, fu[0].dest_tag)
-                    offset = ROB[index].dest_tag
-                    PC.PC = int(PC.PC + 1 + offset/4)
-                    PC.valid = 1
-            else:
-                pass
-            # remove from fu 
-            fu.popleft()
+# function: compute the result of a finished instruction
+def calculate(op, value1, value2):
+    if op in ('Add', 'Add.d', 'Addi'):
+        return value1 + value2
+    if op in ('Sub', 'Sub.d'):
+        return value1 - value2
+    if op == 'Mult.d':
+        return value1 * value2
+    raise ValueError(op)
 
-# function: ld_sd_execution 
-def ld_sd_execution(ld_sd_exe, time_ld_sd_exe, ld_sd_queue, ROB, cycle):
-    if ld_sd_exe.busy == 1:
-        # write down starting cycle
-        if ld_sd_exe.cycle == 0:            
-            for element in ld_sd_queue:
-                if element.ld_sd_tag == ld_sd_exe.dest_tag:
-                    break
-            index = find_ROB_entry(ROB, element.dest_tag)
-            ROB[index].exe.append(cycle)
-            # execute 
-            ld_sd_exe.cycle += 1
-        # write address back to ld_sd_queue
-        if ld_sd_exe.cycle == time_ld_sd_exe:
-            address = ld_sd_exe.value1 + ld_sd_exe.value2
-            for element in ld_sd_queue:
-                if element.ld_sd_tag == ld_sd_exe.dest_tag:
-                    element.address = address
-                    element.ready = 1
-                    break
-            # write down finish cycle
-            index = find_ROB_entry(ROB, element.dest_tag)
-            ROB[index].exe.append(cycle)
-            ld_sd_exe.busy = 0
+# function: resolve a branch at the end of EX and train the BTB entry
+def resolve_branch(st, rob, value1, value2):
+    if rob.ins.op == 'Beq':
+        rob.taken = value1 == value2
+    else:
+        rob.taken = value1 != value2
+    target = rob.PC + 1 + rob.ins.imm
+    rob.actual_next = target if rob.taken else rob.PC + 1
+    rob.mispredicted = 1 if rob.actual_next != rob.pred_next else 0
+    entry = st.BTB[rob.PC % 8]
+    entry.valid = 1
+    entry.pc = rob.PC
+    entry.target = target
+    entry.taken = 1 if rob.taken else 0
 
 # function: execution
-def exe(fu_int_adder, time_fu_int_adder,
-        fu_fp_adder, time_fu_fp_adder,
-        fu_fp_multi, time_fu_fp_multi, results_buffer,
-        rs_int_adder, rs_fp_adder, rs_fp_multi, 
-        ld_sd_exe, time_ld_sd_exe, ld_sd_queue,
-        cycle, ROB, PC):
-    '''execution in fu and ld_sd address calculation'''
-    ld_sd_execution(ld_sd_exe, time_ld_sd_exe, ld_sd_queue, ROB, cycle) 
-    # functional units 
-    fu_exe(fu_int_adder, results_buffer, ROB, time_fu_int_adder, cycle, PC)
-    fu_exe(fu_fp_adder, results_buffer, ROB, time_fu_fp_adder, cycle, PC)
-    fu_exe(fu_fp_multi, results_buffer, ROB, time_fu_fp_multi, cycle, PC)
-    '''fetch instructions from rs and ld_sd_queue'''
-    # from ld_sd_queue
-    # check valid ins in ld_sd_queue 
-    index = check_valid_ins_in_ldsd(ld_sd_queue)
-    # put ins into ld_sd_exe
-    if (index>=0)&(ld_sd_exe.busy==0):
-        ld_sd_exe.busy = 1
-        ld_sd_exe.cycle = 0
-        ld_sd_exe.value1 = ld_sd_queue[index].reg_value
-        ld_sd_exe.value2 = ld_sd_queue[index].immediate
-        ld_sd_exe.dest_tag = ld_sd_queue[index].ld_sd_tag
-        if ROB[find_ROB_entry(ROB, ld_sd_queue[index].dest_tag)].issue[0] < cycle:
-            ld_sd_execution(ld_sd_exe, time_ld_sd_exe, ld_sd_queue, ROB, cycle)
-    # from rs 
-    # int_adder
-    # fetch valid instruction 
-    if check_valid_ins_in_rs(rs_int_adder)>=0:
-        index = check_valid_ins_in_rs(rs_int_adder)
-        fu_int_adder.append(fu_entry())
-        add_entry_into_fu(fu_int_adder, rs_int_adder[index])
-        # check if it's a waiting instruction
-        if ROB[find_ROB_entry(ROB, rs_int_adder[index].dest_tag)].issue[0] < cycle:
-            fu_exe(fu_int_adder, results_buffer, ROB, time_fu_int_adder, cycle, PC)
-        # remove ins from rs 
-        rs_int_adder[index].busy = 0
-    # fp_adder
-    if check_valid_ins_in_rs(rs_fp_adder)>=0:
-        index = check_valid_ins_in_rs(rs_fp_adder)
-        fu_fp_adder.append(fu_entry())
-        add_entry_into_fu(fu_fp_adder, rs_fp_adder[index])
-        if ROB[find_ROB_entry(ROB, rs_fp_adder[index].dest_tag)].issue[0] < cycle:
-            fu_exe(fu_fp_adder, results_buffer, ROB, time_fu_fp_adder, cycle, PC)
-        # remove ins from rs 
-        rs_fp_adder[index].busy = 0
-    # fp_multi
-    if check_valid_ins_in_rs(rs_fp_multi)>=0:
-        index = check_valid_ins_in_rs(rs_fp_multi)
-        fu_fp_multi.append(fu_entry())
-        add_entry_into_fu(fu_fp_multi, rs_fp_multi[index])
-        if ROB[find_ROB_entry(ROB, rs_fp_multi[index].dest_tag)].issue[0] < cycle:
-            fu_exe(fu_fp_multi, results_buffer, ROB, time_fu_fp_multi, cycle, PC)
-        # remove ins from rs 
-        rs_fp_multi[index].busy = 0
-
+def exe(cycle, st):
+    '''dispatch from reservation stations'''
+    for kind in ('int', 'fpadd', 'fpmul'):
+        for element in check_valid_ins_in_rs(st.rs[kind], cycle):
+            unit = find_free_fu(st.fu[kind], cycle)
+            if unit is None:
+                break
+            start_exe(st, kind, unit, element.rob, element.value_1st, element.value_2nd, cycle)
+            # remove ins from rs: the entry can be reused from the next cycle
+            element.busy = 0
+    '''address calculation of loads and stores'''
+    for element in check_valid_ins_in_ldsd(st.ld_sd_queue, cycle):
+        unit = find_free_fu(st.fu['ldsd'], cycle)
+        if unit is None:
+            break
+        start_exe(st, 'ldsd', unit, element.rob, element.reg_value, element.immediate, cycle)
+        element.started = 1
+    '''finish instructions whose EX ends in this cycle'''
+    mispredicted = []
+    for op in [element for element in st.in_flight if element.end == cycle]:
+        st.in_flight.remove(op)
+        rob = op.rob
+        if rob.ins.unit == 'ldsd':
+            rob.lsq.address = op.value1 + op.value2
+            rob.lsq.ready = 1
+            rob.lsq.ready_cycle = cycle
+        elif rob.ins.op in ('Beq', 'Bne'):
+            resolve_branch(st, rob, op.value1, op.value2)
+            if rob.mispredicted:
+                mispredicted.append(rob)
+        else:
+            st.results_buffer.append(fu_result(rob, calculate(rob.ins.op, op.value1, op.value2), cycle))
+    '''misprediction: the oldest one squashes everything younger, including younger branches'''
+    if mispredicted:
+        squash(st, min(mispredicted, key=lambda rob: rob.seq), cycle)

@@ -1,26 +1,28 @@
 >> Instruction Buffer --> list
-Read assembly code in by lines
+Read assembly code in by lines, decoded once (init.instruction)
+op | dest | src1 | src2 | imm | base | unit | text
 
 >> RATs --> list
-tag or value
+value or ROB tag
 
->> Reservation Station --> list 
-busy | op | tag_1st | value_1st | valid_1st | tag_2nd | value_2nd | valid_2nd | dest_tag 
+>> Reservation Station --> list per FU type (int, fpadd, fpmul)
+busy | op | tag_1st | value_1st | valid_1st | tag_2nd | value_2nd | valid_2nd | dest_tag | rob
 
->> Functional Unit --> FIFO queue
-cycle | op | value1 | value2 | dest_tag
+>> Functional Units --> list of units per FU type; instructions in EX in in_flight
+unit: next_free (first cycle it can start an instruction)
+in_flight entry: rob | unit | end (last EX cycle) | value1 | value2
 
 >> Ld/Sd --> FIFO queue
-ldsd_tag | ready | op | address | data | dest_tag | immediate | reg_tag | reg_value | valid
+ld_sd_tag | op | dest_tag | rob | immediate | reg_tag | reg_value | valid | started | ready | ready_cycle | address | data | data_valid | data_cycle | in_memory
 
->> ld_sd_exe 
-busy | cycle | value1 | value2 | dest_tag 
+>> Memory --> one access at a time
+mem_busy_until (last cycle of the current access) | mem_load (load using it)
 
->> ld_sd_mem 
-busy | cycle | addr | dest_tag | data | op 
-
->> cdb 
-valid | value | dest_tag
+>> results_buffer --> list, waiting for a CDB
+rob | value | ready (cycle produced)
 
 >> ROB --> FIFO queue
-ROB_tag | PC | value | dest | issue | exe | mem | cdb | commit 
+ROB_tag | seq | PC | ins | value | done | dest_tag | issue | exe | mem | cdb | commit | lsq | pred_next | actual_next | taken | mispredicted | forwarded | error
+
+>> BTB --> 8 entries, index = PC mod 8
+valid | pc | target | taken (1-bit predictor)

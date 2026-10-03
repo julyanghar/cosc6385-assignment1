@@ -1,153 +1,78 @@
 # Qing 
 # 26th May 2017
+# COSC 6385, Oct 2026: stores no longer access memory here (they write at
+# commit, see commit.py); forwarding and memory access start at the earliest
+# in the cycle after the address calculation; a load leaves the queue when it
+# has its data.
 
-''' 
-1. Ld forward check from Sd in ld_sd_queue
-    -- only check nearest Sd instruction
-2. execute LD/SD instruction in ld_sd_mem
-    -- once LD instruction gets data, write back to ld_sd_queue
-    -- LD instruction should be removed after get data  
-    -- SD instruction should be removed at commit stage 
-3. fetch new LD/SD instruction into ld_sd_mem
-    -- if first element is SD, ready and has valid data, only SD to be committed can be fetched into ld_sd_mem 
-    -- else put the first no-matched Ld into ld_sd_mem    
+'''
+MEM stage for loads, in program order. A load whose address was calculated in
+an earlier cycle:
+1. waits while an older store in the ld_sd_queue has no address yet
+2. forwarding check: the youngest older store with the same address
+    -- has its data: forward it, 1 cycle
+    -- data not there yet: wait
+3. no such store: access memory when it is free (single port, not
+   pipelined, time_mem cycles); one load starts per cycle, the oldest
+The load leaves the ld_sd_queue in the cycle it gets its data; its result
+goes to the results_buffer and onto a CDB from the next cycle.
 '''
 from init import fu_result
 
 # function: forward check from sd
-# only check nearest sd
-def forward_check_from_sd(ld_sd_queue, index):
-    data = []
-    for i in reversed(range(index)):
-        if (ld_sd_queue[i].op=='Sd'):
-            if (ld_sd_queue[i].address == ld_sd_queue[index].address):
-                if (type(ld_sd_queue[i].data)==int)|(type(ld_sd_queue[i].data)==float):
-                    data.append(ld_sd_queue[i].data)
-            break
-    return data
-
-# function: check if previous all Sds are ready and un-matched
-def check_all_previous_Sd_no_match(ld_sd_queue, index):
-    flag = True
+# returns (store, all older stores have their address)
+def forward_check_from_sd(ld_sd_queue, index, cycle):
+    load = ld_sd_queue[index]
+    match = None
     for i in range(index):
-        # all Sd instructions
-        if (ld_sd_queue[i].op=='Sd'):
-            if ld_sd_queue[i].ready == 0:
-                flag = False
-                break 
-            elif (ld_sd_queue[i].address==ld_sd_queue[index].address):
-                flag = False
-                break
-            else:
-                pass
-    return flag
- 
-# function: find ROB entry by tag
-def find_ROB_entry(ROB, tag):
-    for index in range(len(ROB)):
-        if ROB[index].ROB_tag == tag:
-            break
-    return index
+        element = ld_sd_queue[i]
+        if element.op == 'Sd':
+            # an address calculated in this cycle is known from the next cycle
+            if (element.ready == 0) or (element.ready_cycle >= cycle):
+                return None, False
+            if element.address == load.address:
+                match = element     # keep the youngest
+    return match, True
 
-# function: put entry into ld_sd_mem
-def put_entry_into_ld_sd_mem(ld_sd_mem, entry):
-    ld_sd_mem.busy = 1
-    ld_sd_mem.cycle = 0
-    ld_sd_mem.address = entry.address
-    ld_sd_mem.dest_tag = entry.dest_tag
-    ld_sd_mem.op = entry.op
-    if ld_sd_mem.op == 'Sd':
-        ld_sd_mem.data = entry.data
+# function: memory read; an address outside 0-255 reads 0 and is reported if the load commits
+def read_memory(st, rob, address):
+    if 0 <= address < 256:
+        return float(st.memory[address])
+    rob.error = 'load from invalid address %d' % address
+    return 0.0
 
-# function: check if Sd to be committed in next cycle 
-def check_if_sd_committable(ld_sd_queue, ROB):
-    flag = False
-    if ld_sd_queue[0].ldsd_tag == ROB[0].dest_tag:
-        flag = True
-    if ld_sd_queue[0].ldsd_tag == ROB[1].dest_tag:
-        # previous ins has been broadcasted
-        if len(ROB[0].cdb)!=0:
-            flag = True
-    return flag
-
-# function: mem 
-def mem(ld_sd_queue, ld_sd_mem, time_ld_sd_mem, results_buffer, 
-        memory, ROB, cycle):
-    '''look forward check for all Ld instructions'''
-    index = -1
-    remove_list = []
-    for element in ld_sd_queue:
-        index += 1
-        if (index>=1)&(element.op=='Ld')&(element.ready==1):
-            data = forward_check_from_sd(ld_sd_queue, index)
-            if len(data)>0:
-                # Ld gets data 
-                results_buffer.append(fu_result())
-                results_buffer[-1].value = data[0]
-                results_buffer[-1].dest_tag = element.dest_tag
-                # remove the Ld instruction
-                remove_list.append(element)
-                # write mem cylce in ROB
-                index = find_ROB_entry(ROB, element.dest_tag)
-                ROB[index].mem.append(cycle)
-    # remove lookforwared Ld
-    for element in remove_list:
-        ld_sd_queue.remove(element)
-    '''ld_sd_mem execution'''
-    if ld_sd_mem.busy == 1:
-        # write mem starting cycle 
-        if ld_sd_mem.cycle == 0:
-            index = find_ROB_entry(ROB, ld_sd_mem.dest_tag)
-            ROB[index].mem.extend([cycle, cycle+time_ld_sd_mem-1])
-            # for Sd, write commit cycle
-            if ld_sd_mem.op == 'Sd':
-                ROB[index].commit.append(cycle)
-        
-        # cycle ++
-        ld_sd_mem.cycle +=1
-        # get the data for Ld or reach the memory for Sd
-        if ld_sd_mem.cycle == time_ld_sd_mem:
-            ld_sd_mem.busy = 0
-            if ld_sd_mem.op == 'Ld': 
-                # put Ld data into results_buffer
-                address = ld_sd_mem.address 
-                data = memory[address]
-                results_buffer.append(fu_result())
-                results_buffer[-1].value = data
-                results_buffer[-1].dest_tag = ld_sd_mem.dest_tag
-            # put data into memory for Sd
-            else:
-                memory[ld_sd_mem.address]=ld_sd_mem.data
-
-    '''fetch new instruction into ld_sd_mem'''
-    if (ld_sd_mem.busy==0)&(len(ld_sd_queue)>0):
-        # flag_1st_ldsd
-        flag_1st_ldsd_sent = False 
-        # fetch the ld_sd_queue header if it's Sd, ready and to be committed
-        if (ld_sd_queue[0].op=='Sd'):
-            # check if this Sd is ready and to be commited 
-            if (ld_sd_queue[0].ready==1):
-                # check to be committed in next cycle
-                if (check_if_sd_committable):
-                    # already have data in Sd
-                    if (type(ld_sd_queue[0].data)==int)|(type(ld_sd_queue[0].data)==float):
-                        # put the Sd entry into ld_sd_mem
-                        entry = ld_sd_queue.popleft()
-                        put_entry_into_ld_sd_mem(ld_sd_mem, entry)
-                        flag_1st_ldsd_sent = True
-                        ld_sd_mem.busy = 1
-
-        # if the 1st Sd is not sent to ld_sd_mem, or the 1st is not Sd
-        if (flag_1st_ldsd_sent==False):
-            for index in range(len(ld_sd_queue)):
-                # ready Ld
-                if (ld_sd_queue[index].op=='Ld')&(ld_sd_queue[index].ready==1):
-                    # haven't got data
-                    if (type(ld_sd_queue[0].data)!=int)&(type(ld_sd_queue[0].data)!=float):
-                        # all previous Sd instructions are ready but no address match 
-                        if check_all_previous_Sd_no_match(ld_sd_queue, index): 
-                            put_entry_into_ld_sd_mem(ld_sd_mem, ld_sd_queue[index])
-                            ld_sd_queue.remove(ld_sd_queue[index])
-                            ld_sd_mem.busy =1
-                            break 
-
+# function: mem
+def mem(cycle, st):
+    '''forwarding check, and find the oldest load that has to access memory'''
+    to_memory = None
+    for index in range(len(st.ld_sd_queue)):
+        element = st.ld_sd_queue[index]
+        if (element.op != 'Ld') or (element.ready == 0) or (element.ready_cycle >= cycle) \
+                or (element.in_memory == 1):
+            continue
+        store, addresses_known = forward_check_from_sd(st.ld_sd_queue, index, cycle)
+        if not addresses_known:
+            continue
+        if store is None:
+            if to_memory is None:
+                to_memory = element
+        elif store.data_valid == 1:
+            # forward the data: 1 cycle in MEM
+            element.rob.mem = [cycle, cycle]
+            element.rob.forwarded = 1
+            st.results_buffer.append(fu_result(element.rob, store.data, cycle))
+            element.in_memory = -1      # done; removed from the queue below
+    for element in [e for e in st.ld_sd_queue if e.in_memory == -1]:
+        st.ld_sd_queue.remove(element)
+    '''start a memory access'''
+    if (to_memory is not None) and (st.mem_busy_until < cycle):
+        to_memory.in_memory = 1
+        to_memory.rob.mem = [cycle, cycle + st.time_mem - 1]
+        st.mem_busy_until = cycle + st.time_mem - 1
+        st.mem_load = to_memory.rob
+    '''finish a memory access'''
+    if (st.mem_load is not None) and (st.mem_load.mem[1] == cycle):
+        rob = st.mem_load
+        st.results_buffer.append(fu_result(rob, read_memory(st, rob, rob.lsq.address), cycle))
+        st.ld_sd_queue.remove(rob.lsq)
+        st.mem_load = None
