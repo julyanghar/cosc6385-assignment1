@@ -116,17 +116,17 @@ cd tomasulo-python
 
 `run_all.sh` writes `results/<test>_w<N>.txt` (every input in `tests/` at widths 1–4, default
 setting), `results/summary.md` (cycles and IPC of every test in three CDB/commit settings) and
-the logs of the scripts below, and checks that the tables in REPORT.md are current. It exits
+the logs of the scripts below, and checks that the generated parts of REPORT.md are current. It exits
 with status 1 if anything fails; running it twice gives byte-identical files. The scripts can
 also be run alone from `verify/`:
 
 | Script | What it checks | Current result |
 |---|---|---|
-| `check_all.py [files]` | every test at widths 1–4 in three CDB/commit settings: same registers, memory and committed instruction sequence as a simple in-order interpreter (`reference.py`); every timing rule of REPORT.md Appendix B; printed values; 19 tables computed by hand (`tests/golden/`) | 300 runs: 288 ok, 12 prefix (`pdf_sample` never ends), 0 failed |
+| `check_all.py [files]` | every test at widths 1–4 in three CDB/commit settings: same registers, memory and committed instruction sequence as a simple in-order interpreter (`reference.py`); the limits and orderings of the timing rules in REPORT.md Appendix B; printed values; 19 tables computed by hand (`tests/golden/`) | 300 runs: 288 ok, 12 prefix (`pdf_sample` never ends), 0 failed |
 | `fuzz.py [N] [seed]` | the same checks on N random programs with random configurations | 2000 programs × 4 widths, 0 failed |
 | `mutants.py` | makes 25 deliberate mistakes in a copy of the code; each must make a check fail | 25 of 25 caught |
 | `compare_original.py` | prints the original code's tables next to ours at width 1 | differences explained in REPORT.md Appendix D |
-| `report_tables.py` | prints the summary tables; `--check REPORT.md` fails if the generated tables of REPORT.md section 3, or the numbers quoted in its text about the CDB and commit settings, no longer match the simulator; `--write REPORT.md` rewrites the tables | REPORT.md up to date |
+| `report_tables.py` | prints the summary tables; `--write REPORT.md` writes the parts of REPORT.md that quote run results (the paragraph of section 1.4 on one CDB, the tables and notes of 3.2, the test cases 3.3–3.10, section 3.11), computing every number in them; `--check REPORT.md` fails if those parts differ from what it writes now. Numbers elsewhere in REPORT.md are written by hand and not checked by it | REPORT.md up to date |
 
 ## Layout
 

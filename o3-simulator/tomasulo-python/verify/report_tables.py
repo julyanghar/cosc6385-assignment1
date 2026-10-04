@@ -1,19 +1,23 @@
-# Prints the result tables of REPORT.md section 3 from the simulator, so the
-# report cannot drift from the code:
+# Writes the parts of REPORT.md that quote run results, from the simulator, so
+# the report cannot drift from the code: the paragraph of section 1.4 on one
+# CDB, the summary tables of 3.2 and the notes under them, the test cases
+# 3.3-3.10 and section 3.11. Every number in these parts is computed here.
 #   python3 report_tables.py                    summary tables (results/summary.md)
-#   python3 report_tables.py --check REPORT.md  exit 1 if a generated block in
-#                                               REPORT.md differs from the output, or
-#                                               a number quoted in the text (CLAIMS)
-#                                               no longer holds
-#   python3 report_tables.py --write REPORT.md  rewrite those blocks
-# A generated block sits between "<!-- BEGIN GENERATED: name -->" and
-# "<!-- END GENERATED: name -->".
+#   python3 report_tables.py --check REPORT.md  exit 1 if a generated part of
+#                                               REPORT.md differs from what this
+#                                               script writes now
+#   python3 report_tables.py --write REPORT.md  rewrite those parts
+# A generated part sits between "<!-- BEGIN GENERATED: name -->" and
+# "<!-- END GENERATED: name -->". Numbers elsewhere in REPORT.md are written by
+# hand and not checked here.
 
 import contextlib
 import glob
 import io
 import os
 import sys
+import textwrap
+from collections import Counter
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, '..', 'code'))
@@ -134,9 +138,6 @@ def test_cases():
     return '\n'.join(out).rstrip('\n')
 
 
-BLOCKS = {'summary': summary, 'test-cases': test_cases}
-
-
 def wb_cycles(st):
     return sorted(e.cdb[0] for e in st.committed if e.cdb)
 
@@ -149,44 +150,171 @@ def cycles(name, cdb=None, commit_width=None):
     return [run(name, w, cdb, commit_width).cycles for w in WIDTHS]
 
 
-def claims():
-    """numbers quoted in the text of REPORT.md sections 1.4, 3.2 and 3.11,
-    recomputed: (where, what the text says, what the simulator gives)"""
-    finishing = sorted(os.path.splitext(os.path.basename(p))[0]
-                       for p in glob.glob(os.path.join(TESTS, '*.txt')))
-    finishing.remove('pdf_sample')
-    flat = [n for n in finishing if len(set(cycles(n, 1, 1))) == 1]
-    daxpy_one = [commit_cycles(run('daxpy', w, 1, 1)) for w in (1, 4)]
-    bursts = commit_cycles(run('daxpy', 4, 1))
-    return [
-        ('1.4, 3.2: wide with one CDB', [11, 11, 11, 11], cycles('wide', 1)),
-        ('1.4, 3.2: independent with one CDB', [12, 9, 9, 9], cycles('independent', 1)),
-        ('3.2: daxpy with one CDB', [41, 34, 33, 33], cycles('daxpy', 1)),
-        ('3.2: original with one CDB', [41, 35, 34, 34], cycles('original', 1)),
-        ('3.2: independent WB cycles, one CDB, width 2', [3, 4, 5, 6, 7, 8],
-         wb_cycles(run('independent', 2, 1))),
-        ('3.2: independent WB cycles, width 1', [3, 4, 6, 7, 8, 11], wb_cycles(run('independent', 1))),
-        ('3.2: programs that finish / same cycles at every width with one CDB and one commit',
-         (24, 16), (len(finishing), len(flat))),
-        ('3.2: daxpy and original among them, 41 cycles', [41, 41],
-         [cycles('daxpy', 1, 1)[0] if 'daxpy' in flat else None,
-          cycles('original', 1, 1)[0] if 'original' in flat else None]),
-        ('3.2: independent with one CDB and one commit', [12, 10, 10, 10], cycles('independent', 1, 1)),
-        ('3.11: daxpy, one CDB and one commit: commits in cycles 17-41 at width 1 and 4',
-         [24, 24], [len([c for c in cs if 17 <= c <= 41]) for cs in daxpy_one]),
-        ('3.11: daxpy, one CDB and one commit: last commit', [41, 41], [cs[-1] for cs in daxpy_one]),
-        ('3.11: daxpy, one CDB, width 4: cycles with 4 commits', [17, 25, 27, 32],
-         sorted(c for c in set(bursts) if bursts.count(c) == 4)),
-        ('3.11: daxpy, one CDB, width 4: cycles', 33, run('daxpy', 4, 1).cycles),
-    ]
+def finishing_tests():
+    names = sorted(os.path.splitext(os.path.basename(p))[0] for p in glob.glob(os.path.join(TESTS, '*.txt')))
+    names.remove('pdf_sample')      # never ends
+    return names
+
+
+# GLUE stands for a space where a line must not break ("12 -> 9")
+GLUE = '\x00'
+
+
+def para(text):
+    """a paragraph wrapped like the rest of REPORT.md"""
+    return textwrap.fill(text, width=95, break_long_words=False,
+                         break_on_hyphens=False).replace(GLUE, ' ')
+
+
+def bullet(text):
+    return textwrap.fill(text, width=95, initial_indent='- ', subsequent_indent='  ', break_long_words=False,
+                         break_on_hyphens=False).replace(GLUE, ' ')
+
+
+def arrow(values):
+    """first and last of a list of cycle counts: 12 -> 9"""
+    return '%d%s\u2192%s%d' % (values[0], GLUE, GLUE, values[-1])
+
+
+def span(values):
+    return '%d\u2013%d' % (values[0], values[-1])
+
+
+def and_list(values):
+    values = [str(v) for v in values]
+    return ', '.join(values[:-1]) + ' and ' + values[-1]
+
+
+def consecutive(values):
+    return values == list(range(values[0], values[0] + len(values)))
+
+
+# The three functions below write the passages of REPORT.md that quote run
+# results; every number in them is computed here. The asserts check that the
+# results still fit the words around the numbers ("stays", "still gains", ...);
+# if they do not, --check and --write fail instead of writing a wrong sentence.
+
+def one_cdb_text():
+    """REPORT.md 1.4: how much one CDB limits a wider issue"""
+    wide, independent = cycles('wide', 1), cycles('independent', 1)
+    wide4 = run('wide', 4, 1)
+    together = max(Counter(e.exe[1] for e in wide4.committed).values())
+    assert len(set(wide)) == 1 and independent[1] < independent[0] and together > 1
+    return para(
+        'With only one CDB, at most one result per cycle can be written back. How much that limits a '
+        'wider issue depends on the program. Our test `wide` has %d independent instructions on %d '
+        'integer adders; at width 4 up to %d of its results are ready in the same cycle, and with one '
+        'CDB it takes %d cycles at every width. `independent` has %d independent instructions on units '
+        'with different latencies; with one CDB it still goes from %d cycles at width 1 to %d at '
+        'width 2 (section 3.2).' % (
+            len(wide4.committed), wide4.config['int_fu'], together, wide[0],
+            len(run('independent', 1).committed), independent[0], independent[1]))
+
+
+def summary_notes():
+    """REPORT.md 3.2: what the summary tables show"""
+    default = dict((n, cycles(n)) for n in ('wide', 'independent', 'daxpy', 'original', 'chain', 'loop'))
+    helped = ('wide', 'independent', 'daxpy', 'original')
+    assert all(default[n][-1] < default[n][0] for n in helped)
+    assert len(set(default['chain'])) == 1 and len(set(default['loop'])) == 1
+    loop_mispredicted = sum(e.mispredicted for e in run('loop', 1).committed)
+    assert loop_mispredicted > 0
+    one = dict((n, cycles(n, 1)) for n in helped)
+    assert len(set(one['wide'])) == 1 and all(one[n][-1] < one[n][0] for n in helped[1:])
+    wide_wb = wb_cycles(run('wide', 4, 1))
+    assert consecutive(wide_wb)                 # one write-back in every cycle, no gap
+    independent2, independent1 = run('independent', 2, 1), run('independent', 1, 1)
+    ready2 = sorted(e.exe[1] for e in independent2.committed)
+    wb2, wb1 = wb_cycles(independent2), wb_cycles(independent1)
+    assert consecutive(wb2) and not consecutive(wb1)
+    names = finishing_tests()
+    issue_only = dict((n, cycles(n, 1, 1)) for n in names)
+    flat = [n for n in names if len(set(issue_only[n])) == 1]
+    gains = sorted(issue_only[n][0] - issue_only[n][-1] for n in names if n not in flat)
+    assert 'daxpy' in flat and 'original' in flat and 'independent' not in flat and gains[0] > 0
+    gain = ('%d' % gains[0]) if gains[0] == gains[-1] else ('%d to %d' % (gains[0], gains[-1]))
+    daxpy, original = issue_only['daxpy'][0], issue_only['original'][0]
+    both = ('%d cycles each' % daxpy) if daxpy == original else ('%d and %d cycles' % (daxpy, original))
+    return '\n'.join([
+        bullet('With the default setting, a wider issue helps programs with independent work (from '
+               'width 1 to 4: `wide` %s, `independent` %s, `daxpy` %s, `original` %s cycles) and does '
+               'nothing for a dependence chain (`chain`, %d cycles at every width) or for a loop whose '
+               'time is decided by its %d mispredictions (`loop`, %d cycles at every width).' % (
+                   arrow(default['wide']), arrow(default['independent']), arrow(default['daxpy']),
+                   arrow(default['original']), default['chain'][0], loop_mispredicted, default['loop'][0])),
+        bullet('With one CDB, `wide` stays at %d cycles at every width: at width 4 its %d results are '
+               'written back one per cycle, in cycles %s. Other programs still gain from a wider issue: '
+               '`independent` %s, `daxpy` %s, `original` %s. In `independent` the results are ready in '
+               'cycles %s at width 2, so the single CDB writes one back in each of cycles %s; at width 1 '
+               'it writes back only in cycles %s.' % (
+                   one['wide'][0], len(wide_wb), span(wide_wb), arrow(one['independent']),
+                   arrow(one['daxpy']), arrow(one['original']), span(ready2), span(wb2), and_list(wb1))),
+        bullet('With one CDB and one commit per cycle, %d of the %d programs that finish take the same '
+               'number of cycles at every width, among them `daxpy` and `original` (%s); for `daxpy` '
+               'the limit is commit (section 3.11). The other %d end %s cycles earlier at width 4 than '
+               'at width 1, for example `independent` %s.' % (
+                   len(flat), len(names), both, len(names) - len(flat), gain,
+                   arrow(issue_only['independent']))),
+    ])
+
+
+def limits_text():
+    """REPORT.md 3.11: what limits the gain from a wider issue"""
+    chain = [c for cdb, commit in ((None, None), (1, None), (1, 1)) for c in cycles('chain', cdb, commit)]
+    assert len(set(chain)) == 1
+    wide4 = run('wide', 4, 1)
+    together = max(Counter(e.exe[1] for e in wide4.committed).values())
+    wide = cycles('wide', 1)
+    assert len(set(wide)) == 1 and together > 1
+    assert describe(test_path('cdb_limit'))[3] == describe(test_path('wide'))[3]
+    assert run('cdb_limit', 1).config['cdb'] == 1
+    one_commit, wide_commit = run('daxpy', 4, 1, 1), run('daxpy', 4, 1)
+    per_cycle = Counter(commit_cycles(wide_commit))
+    most = max(per_cycle.values())
+    bursts = sorted(c for c, k in per_cycle.items() if k == most)
+    daxpy_one = cycles('daxpy', 1, 1)
+    assert wide_commit.cycles < one_commit.cycles and most > 1 and len(set(daxpy_one)) == 1
+    daxpy = run('daxpy', 1)
+    accesses = [e for e in daxpy.committed if e.ins.op == 'Sd' or (e.ins.op == 'Ld' and not e.forwarded)]
+    figure = 4 * TEST_CASES.index('daxpy') + 1
+    loop, loop1, loop4 = cycles('loop'), run('loop', 1), run('loop', 4)
+    loop_mispredicted = sum(e.mispredicted for e in loop1.committed)
+    assert len(set(loop)) == 1 and loop4.squashed > loop1.squashed
+    structural = run('structural', 1).config
+    assert structural['int_rs'] == structural['fpadd_rs'] == structural['fpmul_rs']
+    return '\n'.join([
+        bullet('**Dependences.** In `chain` every instruction needs the previous result: %d cycles at '
+               'every width and in every setting.' % chain[0]),
+        bullet('**The CDB.** In `wide`, %d integer adders finish up to %d instructions in the same cycle, '
+               'but with one CDB only one result per cycle is written back: %d cycles at every width '
+               '(`cdb_limit` is the same program with `CDB buses = 1` in the file).' % (
+                   wide4.config['int_fu'], together, wide[0])),
+        bullet('**Commit.** For `daxpy` at width 4 with one CDB, one commit per cycle gives %d cycles; a '
+               'commit width of 4 gives %d, with %d instructions committing in the same cycle in cycles '
+               '%s. With one CDB and one commit per cycle, `daxpy` takes %d cycles at every width.' % (
+                   one_commit.cycles, wide_commit.cycles, most, and_list(bursts), daxpy_one[0])),
+        bullet('**Memory.** One port and memory accesses of several cycles: in `daxpy` %d accesses of %d '
+               'cycles each (Figures %d\u2013%d); in `sample_tc1` and `sample_tc2` each access takes %d or '
+               '%d cycles.' % (
+                   len(accesses), daxpy.config['ldsd_mem'], figure, figure + 3,
+                   run('sample_tc1', 1).config['ldsd_mem'], run('sample_tc2', 1).config['ldsd_mem'])),
+        bullet("**Branches.** Each misprediction delays the correct instructions until 2 cycles after the "
+               "branch's EX, and a branch predicted taken ends the issue group, so at most one loop "
+               "iteration starts per cycle. In `loop` the %d mispredictions decide the timing: %d cycles "
+               "at every width; a wider issue only fetches more wrong-path instructions (%d squashed at "
+               "width 1, %d at width%s4)." % (loop_mispredicted, loop[0], loop1.squashed, loop4.squashed, GLUE)),
+        bullet('**Full structures.** In `structural` (%d reservation station per FU type, a %d-entry '
+               'load/store queue, a %d-entry ROB) issue keeps stopping at the first instruction without '
+               'a free entry: %s cycles.' % (
+                   structural['int_rs'], structural['ldsd_rs'], structural['rob'], arrow(cycles('structural')))),
+    ])
+
+
+BLOCKS = {'one-cdb': one_cdb_text, 'summary': summary, 'summary-notes': summary_notes,
+          'test-cases': test_cases, 'limits': limits_text}
 
 
 def update(report, write):
-    wrong = [(where, said, got) for where, said, got in claims() if said != got]
-    for where, said, got in wrong:
-        print('%s: section %s says %s, the simulator gives %s' % (report, where, said, got))
-    if wrong:
-        return 1
     with open(report) as f:
         text = f.read()
     new = text
@@ -196,18 +324,23 @@ def update(report, write):
         if text.count(begin) != 1 or text.count(end) != 1:
             print('%s: block %s not found' % (report, name))
             return 1
+        try:
+            block = make()
+        except AssertionError:
+            print('%s: the results no longer fit the words of block %s; see report_tables.py' % (report, name))
+            return 1
         start = new.index(begin) + len(begin)
         stop = new.index(end)
-        new = new[:start] + make() + '\n' + new[stop:]
+        new = new[:start] + block + '\n' + new[stop:]
     if new == text:
-        print('%s: generated tables are up to date' % report)
+        print('%s: generated parts are up to date' % report)
         return 0
     if write:
         with open(report, 'w') as f:
             f.write(new)
-        print('%s: generated tables rewritten' % report)
+        print('%s: generated parts rewritten' % report)
         return 0
-    print('%s: generated tables are out of date; run report_tables.py --write' % report)
+    print('%s: generated parts are out of date; run report_tables.py --write' % report)
     return 1
 
 

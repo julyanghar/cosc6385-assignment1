@@ -16,8 +16,8 @@ order, plus three parts of the machine the handout describes but the code did no
 
 We ran our 25 test inputs at issue widths 1–4, each in three CDB settings: 300 runs
 (Appendix C). In all 288 runs of the 24 programs that finish, the simulator ends with the same
-registers and memory as a simple one-instruction-at-a-time interpreter, and every instruction
-obeys the timing rules. The other 12 runs are the handout's sample, which never ends; there the
+registers and memory as a simple one-instruction-at-a-time interpreter, and every committed
+instruction keeps to the limits and orderings of the timing rules. The other 12 runs are the handout's sample, which never ends; there the
 instructions committed in the first 200 cycles are compared. For 7 small tests we computed 19
 instruction tables by hand, and they match exactly. 2000 random programs pass the same checks
 at all four widths. We also put 25 deliberate mistakes into copies of the code, and the checks
@@ -41,10 +41,13 @@ the eight instructions take 11 cycles at every width and DAXPY goes from 41 to 3
 - [Appendix D. Width 1 compared with the original code](#appendix-d-width-1-compared-with-the-original-code)
 - [Appendix E. Comparison with the sample report](#appendix-e-comparison-with-the-sample-report)
 
-How to run everything is in [README.md](README.md). Every table in section 3 is generated
-from the simulator by [`report_tables.py`](tomasulo-python/verify/report_tables.py), which also
-recomputes the numbers quoted in the text of sections 1.4, 3.2 and 3.11;
-[`run_all.sh`](tomasulo-python/run_all.sh) fails if this report no longer matches them. "The
+How to run everything is in [README.md](README.md). The parts of this report that quote run
+results are written by [`report_tables.py`](tomasulo-python/verify/report_tables.py) from
+simulator runs: the paragraph of section 1.4 on one CDB, the summary tables of section 3.2 and
+the notes under them, the test cases 3.3–3.10 and section 3.11. Every number in these parts is
+computed by the script, and [`run_all.sh`](tomasulo-python/run_all.sh) fails if the report
+differs from what the script writes now. The numbers in the rest of the text (the TL;DR,
+sections 1 and 2, the appendices) were written by hand from the files in `results/`. "The
 handout" means the assignment PDF (`programming-tomasulo.pdf`), which is not included in this
 repository; "the sample report" is `Sample_Tomasulo_Assignment_Report.pdf` from the course.
 
@@ -112,11 +115,14 @@ back and commit with the issue width: up to *W* results are broadcast and up to 
 instructions commit per cycle (its section 2, Code Changes), and its result tables show two
 results written back in the same cycle.
 
+<!-- BEGIN GENERATED: one-cdb -->
 With only one CDB, at most one result per cycle can be written back. How much that limits a
-wider issue depends on the program. Our test `wide` has eight independent instructions on four
-integer adders, so many results are ready in the same cycle; with one CDB it takes 11 cycles at
-every width. `independent` has six independent instructions on units with different latencies;
-with one CDB it still goes from 12 cycles at width 1 to 9 at width 2 (section 3.2).
+wider issue depends on the program. Our test `wide` has 8 independent instructions on 4 integer
+adders; at width 4 up to 4 of its results are ready in the same cycle, and with one CDB it
+takes 11 cycles at every width. `independent` has 6 independent instructions on units with
+different latencies; with one CDB it still goes from 12 cycles at width 1 to 9 at width 2
+(section 3.2).
+<!-- END GENERATED: one-cdb -->
 
 Our default follows the sample report: the number of CDB buses and the commit width are equal
 to the issue width. Both can be set separately (`CDB buses = N`, `Commit width = N` in the
@@ -138,7 +144,7 @@ stages run in each cycle (issue, exe, mem, wb, commit). Each change below shows 
 code ("Initial version") and ours ("Our version"), shortened where marked with `...`. The full
 difference is `git diff` from the commit that added the original files (see README).
 
-The original code passed 10–16 separate arguments to each stage. We pass one object `st`
+The original code passed 5 to 16 separate arguments to each stage. We pass one object `st`
 ([`State`](tomasulo-python/code/init.py#L283)) that holds the whole machine, and replaced the
 original's data types (a new `namedtuple` *class* for every entry) with plain classes.
 
@@ -473,17 +479,21 @@ One CDB, as the handout lists: cycles with one CDB bus and the commit width equa
 
 What the summary shows (details in section 3.11):
 
-- With the default setting, a wider issue helps programs with independent work (`wide`,
-  `independent`, `daxpy`, `original`) and does nothing for a dependence chain (`chain`) or a loop
-  whose time is decided by its mispredictions (`loop`).
-- With one CDB, `wide` stays at 11 cycles at every width: its eight results are written back
-  one per cycle. Other programs still gain from a wider issue: `independent` 12 → 9, `daxpy`
-  41 → 33, `original` 41 → 34. In `independent` the results finish in different cycles, so
-  issuing earlier lets the single CDB write back in every cycle: at width 2 in each of cycles
-  3–8, at width 1 only in cycles 3, 4, 6, 7, 8 and 11.
+<!-- BEGIN GENERATED: summary-notes -->
+- With the default setting, a wider issue helps programs with independent work (from width 1 to
+  4: `wide` 11 → 5, `independent` 12 → 8, `daxpy` 41 → 31, `original` 41 → 34 cycles) and does
+  nothing for a dependence chain (`chain`, 22 cycles at every width) or for a loop whose time
+  is decided by its 2 mispredictions (`loop`, 16 cycles at every width).
+- With one CDB, `wide` stays at 11 cycles at every width: at width 4 its 8 results are written
+  back one per cycle, in cycles 3–10. Other programs still gain from a wider issue:
+  `independent` 12 → 9, `daxpy` 41 → 33, `original` 41 → 34. In `independent` the results are
+  ready in cycles 2–7 at width 2, so the single CDB writes one back in each of cycles 3–8; at
+  width 1 it writes back only in cycles 3, 4, 6, 7, 8 and 11.
 - With one CDB and one commit per cycle, 16 of the 24 programs that finish take the same number
-  of cycles at every width, among them `daxpy` and `original` (41 cycles); for `daxpy` the limit
-  is commit (section 3.11). The other 8 still gain a little, for example `independent` 12 → 10.
+  of cycles at every width, among them `daxpy` and `original` (41 cycles each); for `daxpy` the
+  limit is commit (section 3.11). The other 8 end 1 to 3 cycles earlier at width 4 than at
+  width 1, for example `independent` 12 → 10.
+<!-- END GENERATED: summary-notes -->
 
 <!-- BEGIN GENERATED: test-cases -->
 ### 3.3 Test case 1: `pdf_sample`
@@ -1400,24 +1410,27 @@ Bne R1, R3, -7     [21]    [24, 24]    []          []      [30]    not taken, mi
 
 ### 3.11 What limits the gain from a wider issue
 
+<!-- BEGIN GENERATED: limits -->
 - **Dependences.** In `chain` every instruction needs the previous result: 22 cycles at every
   width and in every setting.
-- **The CDB.** In `wide`, four integer adders finish four instructions per cycle, but with one
-  CDB only one result per cycle is written back: 11 cycles at every width (`cdb_limit` is the same
-  program with `CDB buses = 1` in the file).
-- **Commit.** With one CDB and one commit per cycle, `daxpy` commits an instruction in 24 of the
-  25 cycles from cycle 17 to cycle 41, at width 1 and at width 4 alike, and it ends in cycle 41
-  at every width. With one CDB but the commit width equal to the issue width, up to four
-  instructions commit in one cycle (in cycles 17, 25, 27 and 32 at width 4), and it ends in
-  cycle 33.
-- **Memory.** One port and memory accesses of several cycles: in `daxpy` 12 accesses of 2 cycles
-  each (Figures 29–32); in `sample_tc1` and `sample_tc2` each load takes 6 or 5 cycles.
+- **The CDB.** In `wide`, 4 integer adders finish up to 4 instructions in the same cycle, but
+  with one CDB only one result per cycle is written back: 11 cycles at every width (`cdb_limit`
+  is the same program with `CDB buses = 1` in the file).
+- **Commit.** For `daxpy` at width 4 with one CDB, one commit per cycle gives 41 cycles; a
+  commit width of 4 gives 33, with 4 instructions committing in the same cycle in cycles 17,
+  25, 27 and 32. With one CDB and one commit per cycle, `daxpy` takes 41 cycles at every width.
+- **Memory.** One port and memory accesses of several cycles: in `daxpy` 12 accesses of 2
+  cycles each (Figures 29–32); in `sample_tc1` and `sample_tc2` each access takes 6 or 5
+  cycles.
 - **Branches.** Each misprediction delays the correct instructions until 2 cycles after the
   branch's EX, and a branch predicted taken ends the issue group, so at most one loop iteration
-  starts per cycle. In `loop` the two mispredictions decide the timing: 16 cycles at every width;
-  a wider issue only fetches more wrong-path instructions (4 squashed at width 1, 5 at width 4).
-- **Full structures.** In `structural` (one station per FU type, a 2-entry queue, a 4-entry ROB)
-  issue keeps stopping at the first instruction without a free entry: 20 → 18 cycles.
+  starts per cycle. In `loop` the 2 mispredictions decide the timing: 16 cycles at every width;
+  a wider issue only fetches more wrong-path instructions (4 squashed at width 1, 5 at
+  width 4).
+- **Full structures.** In `structural` (1 reservation station per FU type, a 2-entry load/store
+  queue, a 4-entry ROB) issue keeps stopping at the first instruction without a free entry:
+  20 → 18 cycles.
+<!-- END GENERATED: limits -->
 
 ## Appendix A. Problems in the original code
 
@@ -1526,9 +1539,11 @@ either; then only the committed instructions so far can be compared, and the run
 
 ### C.2 Timing rules
 
-`check_all.py` also checks every committed instruction against the rules of Appendix B, written
-again from the tables rather than taken from the simulator's code. It reads the limits from the
-input file, and which units are pipelined from its own table. The rules checked:
+`check_all.py` also checks every committed instruction against the limits and orderings of the
+rules of Appendix B, written again from the tables rather than taken from the simulator's code;
+which instruction goes first when several could is left to the hand-computed tables (C.3). It
+reads the limits from the input file, and which units are pipelined from its own table. The
+rules checked:
 
 - ISSUE and COMMIT in program order; at most *W* issues, the commit width of commits and the
   number of CDB buses of broadcasts per cycle;
@@ -1586,7 +1601,7 @@ whose value is computed late (so loads run ahead of stores and some are replayed
 single precision has to round (0.1, 3.4, 16777217, 1e-7). Each gets a random configuration (1–4
 stations and 1–2 units per FU type, latencies 1–6, ROB of 2–12 entries, and half the time a CDB
 count or commit width of 1–4 that can be below the issue width). Programs the reference cannot
-finish in 2000 instructions are skipped. Each program runs at widths 1–4 through the checks of
+finish in 2000 instructions, or that access an invalid address, are skipped. Each program runs at widths 1–4 through the checks of
 C.1 and C.2. In `results/fuzz.txt`: 2000 programs, 8000 runs, 0 failures.
 
 ### C.5 Mutation test
