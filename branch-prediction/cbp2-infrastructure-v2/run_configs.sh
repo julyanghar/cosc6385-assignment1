@@ -1,12 +1,12 @@
 #!/bin/bash
 # Rebuilds src/predict for every predictor configuration in the report and
 # runs the framework's run script on all traces.  The raw output of each run
-# goes to results/<name>.txt.  csh and dc must be on PATH (see README.md).
+# goes to results/<name>.txt.  csh and dc must be on PATH (see the root README.md, part 1).
 #
 # Usage, from cbp2-infrastructure-v2/:  bash run_configs.sh
 #
 # B0_always_taken.txt is not produced here: it is the output of the unmodified
-# skeleton (see README.md).
+# skeleton (see the root README.md, part 1).
 
 set -e
 cd "$(dirname "$0")"

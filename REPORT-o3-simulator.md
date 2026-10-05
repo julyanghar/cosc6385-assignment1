@@ -41,11 +41,14 @@ the eight instructions take 11 cycles at every width and DAXPY goes from 41 to 3
 - [Appendix D. Width 1 compared with the original code](#appendix-d-width-1-compared-with-the-original-code)
 - [Appendix E. Comparison with the sample report](#appendix-e-comparison-with-the-sample-report)
 
-How to run everything is in [README.md](README.md). The parts of this report that quote run
-results are written by [`report_tables.py`](tomasulo-python/verify/report_tables.py) from
+This is the report for part 2 of the assignment; the code is in
+[`o3-simulator/tomasulo-python/`](o3-simulator/tomasulo-python/), and paths written as `tests/`,
+`results/`, `verify/` or `code/` are inside that directory. How to run everything is in
+[README.md](README.md#part-2-tomasulo-simulator-with-multiple-issue). The parts of this report that quote run
+results are written by [`report_tables.py`](o3-simulator/tomasulo-python/verify/report_tables.py) from
 simulator runs: the paragraph of section 1.4 on one CDB, the summary tables of section 3.2 and
 the notes under them, the test cases 3.3–3.10 and section 3.11. Every number in these parts is
-computed by the script, and [`run_all.sh`](tomasulo-python/run_all.sh) fails if the report
+computed by the script, and [`run_all.sh`](o3-simulator/tomasulo-python/run_all.sh) fails if the report
 differs from what the script writes now. The numbers in the rest of the text (the TL;DR,
 sections 1 and 2, the appendices) were written by hand from the files in `results/`. "The
 handout" means the assignment PDF (`programming-tomasulo.pdf`), which is not included in this
@@ -145,10 +148,10 @@ code ("Initial version") and ours ("Our version"), shortened where marked with `
 difference is `git diff` from the commit that added the original files (see README).
 
 The original code passed 5 to 16 separate arguments to each stage. We pass one object `st`
-([`State`](tomasulo-python/code/init.py#L283)) that holds the whole machine, and replaced the
+([`State`](o3-simulator/tomasulo-python/code/init.py#L283)) that holds the whole machine, and replaced the
 original's data types (a new `namedtuple` *class* for every entry) with plain classes.
 
-### 2.1 Issue up to *W* instructions per cycle ([`issue.py`](tomasulo-python/code/issue.py#L126))
+### 2.1 Issue up to *W* instructions per cycle ([`issue.py`](o3-simulator/tomasulo-python/code/issue.py#L126))
 
 The original issued one instruction per cycle and stopped fetching at every `Bne` until it
 resolved:
@@ -192,11 +195,11 @@ def issue(cycle, st):
 ```
 
 Instructions issued in the same cycle can depend on each other: each one is renamed before the
-next one reads the RAT. [`predict_branch`](tomasulo-python/code/issue.py#L119) looks up BTB entry
+next one reads the RAT. [`predict_branch`](o3-simulator/tomasulo-python/code/issue.py#L119) looks up BTB entry
 `PC mod 8`; it predicts taken only if the entry belongs to this branch (it stores the branch's
 PC) and its bit says the branch was taken last time.
 
-### 2.2 Write back up to *N* results per cycle ([`wb.py`](tomasulo-python/code/wb.py#L52))
+### 2.2 Write back up to *N* results per cycle ([`wb.py`](o3-simulator/tomasulo-python/code/wb.py#L52))
 
 The original moved one result per cycle onto its single CDB, and wrote every broadcast value
 into the RAT, even after a younger instruction had renamed the register (bug B1):
@@ -233,7 +236,7 @@ def wb(cycle, st):
             st.rat_fp[int(reg_tag[1:])] = value
 ```
 
-### 2.3 Commit up to *W* instructions per cycle; stores write memory here ([`commit.py`](tomasulo-python/code/commit.py#L41))
+### 2.3 Commit up to *W* instructions per cycle; stores write memory here ([`commit.py`](o3-simulator/tomasulo-python/code/commit.py#L41))
 
 The original committed one instruction per cycle (plus one after a store), gave branches no
 commit cycle, crashed when a branch emptied the ROB (B5), and let stores write memory in the
@@ -278,7 +281,7 @@ def commit(cycle, st):
         st.ROB.popleft()
 ```
 
-### 2.4 Execute: several FUs, oldest first, branch resolution ([`exe.py`](tomasulo-python/code/exe.py#L77))
+### 2.4 Execute: several FUs, oldest first, branch resolution ([`exe.py`](o3-simulator/tomasulo-python/code/exe.py#L77))
 
 When an instruction that had been waiting entered a pipelined unit, the original called
 `fu_exe` a second time in the same cycle, which moved every instruction in that unit forward
@@ -311,12 +314,12 @@ Our version
 
 Each instruction in EX records the cycle its EX ends, and finishes in that cycle; nothing is
 stepped twice. A pipelined unit can start a new instruction every cycle, an unpipelined one
-only after the previous instruction's EX ends ([`start_exe`](tomasulo-python/code/exe.py#L44)).
+only after the previous instruction's EX ends ([`start_exe`](o3-simulator/tomasulo-python/code/exe.py#L44)).
 A branch is resolved at the end of its EX
-([`resolve_branch`](tomasulo-python/code/exe.py#L62)): it trains its BTB entry, and if the
+([`resolve_branch`](o3-simulator/tomasulo-python/code/exe.py#L62)): it trains its BTB entry, and if the
 prediction was wrong, `squash` (section 2.6) removes the wrong path.
 
-### 2.5 Loads: forwarding, running ahead of stores, memory-order check ([`mem.py`](tomasulo-python/code/mem.py#L79))
+### 2.5 Loads: forwarding, running ahead of stores, memory-order check ([`mem.py`](o3-simulator/tomasulo-python/code/mem.py#L79))
 
 The original made a load wait until every older store had its address, and could forward to
 a load in the same cycle in which the load computed its address (bug B3). Our MEM stage, for
@@ -338,7 +341,7 @@ each load whose address was computed in an earlier cycle:
 
 A load that went ahead of a store with an unknown address read the wrong value if that store
 overlaps it. In the cycle after a store's address is calculated,
-[`check_memory_order`](tomasulo-python/code/mem.py#L55) compares it with the younger loads that
+[`check_memory_order`](o3-simulator/tomasulo-python/code/mem.py#L55) compares it with the younger loads that
 already got (or are getting) their data:
 
 ```python
@@ -355,7 +358,7 @@ already got (or are getting) their data:
         squash(st, victim.seq - 1, victim.PC, cycle)    # the load is squashed too
 ```
 
-### 2.6 Recovery ([`squash.py`](tomasulo-python/code/squash.py#L21), new)
+### 2.6 Recovery ([`squash.py`](o3-simulator/tomasulo-python/code/squash.py#L21), new)
 
 Called for a mispredicted branch (keep the branch, fetch its correct target) and for a
 memory-order violation (keep what is before the load, fetch the load again). It does the
@@ -380,14 +383,14 @@ producer the RAT pointed to before the squashed instructions were issued. If tha
 broadcast since, we store its value; if it has committed since, the architectural register holds
 its value.
 
-### 2.7 Memory: 256 bytes, single precision ([`init.py`](tomasulo-python/code/init.py#L125))
+### 2.7 Memory: 256 bytes, single precision ([`init.py`](o3-simulator/tomasulo-python/code/init.py#L125))
 
 The original's memory was a list of 256 slots, each holding a whole Python number. Ours is 256
-bytes; [`write_single`](tomasulo-python/code/init.py#L138) stores the 4-byte single-precision
+bytes; [`write_single`](o3-simulator/tomasulo-python/code/init.py#L138) stores the 4-byte single-precision
 encoding of a value at its byte address, and loads decode the same 4 bytes. Forwarding uses
 `to_single` too, so a load gets the same value whether it reads memory or forwards from a store.
 
-### 2.8 Input file and output ([`read_input`](tomasulo-python/code/init.py#L221), [`print_status.py`](tomasulo-python/code/print_status.py#L11))
+### 2.8 Input file and output ([`read_input`](o3-simulator/tomasulo-python/code/init.py#L221), [`print_status.py`](o3-simulator/tomasulo-python/code/print_status.py#L11))
 
 The original's configuration was fixed in `main.py`, the program came from `code.in`, and
 `test_case.txt` was never read; it knew only `Bne` with a byte offset, no commas, and printed
@@ -395,7 +398,7 @@ no registers or memory. Now everything comes from the input file in the handout'
 (README). At the end we print all registers and the non-zero memory words, each value with the
 fewest digits that read back as the same number. The run ends only when nothing is left to
 fetch, the ROB is empty and the last store has finished writing
-([`finished`](tomasulo-python/code/main.py#L20)); the original stopped as soon as the ROB was
+([`finished`](o3-simulator/tomasulo-python/code/main.py#L20)); the original stopped as soon as the ROB was
 empty, before the last store's write (B3).
 
 ## 3. Results
@@ -500,7 +503,7 @@ What the summary shows (details in section 3.11):
 
 The sample input of the assignment handout (page 3), unchanged. Bne R2, R3, -3 jumps back to the first instruction and R2, R3 never change, so the program never ends; check_all.py stops it after 200 cycles.
 
-Configuration and initial values ([`tests/pdf_sample.txt`](tomasulo-python/tests/pdf_sample.txt)):
+Configuration and initial values ([`tests/pdf_sample.txt`](o3-simulator/tomasulo-python/tests/pdf_sample.txt)):
 
 ```text
                 # of rs  Cycles in EX  Cycles in Mem  # of FUs
@@ -659,7 +662,7 @@ Add.d F1, F2, F3  [28]    [29, 31]    []          [32]    [40]
 
 Test case #01 of the sample report (Sample_Tomasulo_Assignment_Report.pdf), unchanged.
 
-Configuration and initial values ([`tests/sample_tc1.txt`](tomasulo-python/tests/sample_tc1.txt)):
+Configuration and initial values ([`tests/sample_tc1.txt`](o3-simulator/tomasulo-python/tests/sample_tc1.txt)):
 
 ```text
                # of rs   Cycles in EX   Cycles in Mem   # of FUs
@@ -793,7 +796,7 @@ Add.d F4 F2 F4   [18]    [29, 31]    []          [32]    [33]
 
 Test case #02 of the sample report (Sample_Tomasulo_Assignment_Report.pdf), unchanged.
 
-Configuration and initial values ([`tests/sample_tc2.txt`](tomasulo-python/tests/sample_tc2.txt)):
+Configuration and initial values ([`tests/sample_tc2.txt`](o3-simulator/tomasulo-python/tests/sample_tc2.txt)):
 
 ```text
                # of rs   Cycles in EX   Cycles in Mem   # of FUs
@@ -927,7 +930,7 @@ Add.d F4 F2 F4   [26]    [43, 45]    []          [46]    [47]
 
 Eight independent integer instructions and four integer adders: with issue width N, N instructions issue, execute, write back and commit per cycle.
 
-Configuration and initial values ([`tests/wide.txt`](tomasulo-python/tests/wide.txt)):
+Configuration and initial values ([`tests/wide.txt`](o3-simulator/tomasulo-python/tests/wide.txt)):
 
 ```text
                # of rs   Cycles in EX   Cycles in Mem   # of FUs
@@ -1014,7 +1017,7 @@ Addi R8, R0, 8  [2]     [3, 3]      []          [4]     [5]
 
 Loads and stores. The slow Mult.d keeps the stores from committing early, so loads can forward from them. The store to 0(R2) has no address until the Addi finishes; Ld F5, 0(R0) does not wait for it (as the handout says) and reads memory, Ld F4, 4(R1) has that store's address and forwards from it once the address is known. Stores write memory at commit.
 
-Configuration and initial values ([`tests/memory.txt`](tomasulo-python/tests/memory.txt)):
+Configuration and initial values ([`tests/memory.txt`](o3-simulator/tomasulo-python/tests/memory.txt)):
 
 ```text
                # of rs   Cycles in EX   Cycles in Mem   # of FUs
@@ -1098,7 +1101,7 @@ Ld F4, 4(R1)       [2]     [6, 6]      [7, 7]      [8]     [12]    forwarded
 
 A load goes ahead of an older store whose address is not known yet, as the handout allows, but the store turns out to write the same address (8): the load read the old value 10.0. In the cycle after the store's address is calculated the conflict is found; the load and the Add.d that used its value are squashed and fetched again two cycles later. Final F2 = 1.5, F3 = 3.0.
 
-Configuration and initial values ([`tests/memory_violation.txt`](tomasulo-python/tests/memory_violation.txt)):
+Configuration and initial values ([`tests/memory_violation.txt`](o3-simulator/tomasulo-python/tests/memory_violation.txt)):
 
 ```text
                # of rs   Cycles in EX   Cycles in Mem   # of FUs
@@ -1167,7 +1170,7 @@ Add.d F3, F2, F2  [10]    [15, 16]    []          [17]    [18]
 
 A loop that runs twice. The empty BTB predicts the first Bne not taken and the 1-bit predictor then predicts the last one taken: both are mispredicted.
 
-Configuration and initial values ([`tests/loop.txt`](tomasulo-python/tests/loop.txt)):
+Configuration and initial values ([`tests/loop.txt`](o3-simulator/tomasulo-python/tests/loop.txt)):
 
 ```text
                # of rs   Cycles in EX   Cycles in Mem   # of FUs
@@ -1243,7 +1246,7 @@ Add R3, R2, R2   [11]    [14, 14]    []          [15]    [16]
 
 Y[i] = a * X[i] + Y[i] for i = 0..3 (X at address 0, Y at 32, a in F0). The loop branch is mispredicted in the first iteration (empty BTB) and the last one (the 1-bit predictor says taken); iterations overlap in between.
 
-Configuration and initial values ([`tests/daxpy.txt`](tomasulo-python/tests/daxpy.txt)):
+Configuration and initial values ([`tests/daxpy.txt`](o3-simulator/tomasulo-python/tests/daxpy.txt)):
 
 ```text
                # of rs   Cycles in EX   Cycles in Mem   # of FUs
@@ -1437,8 +1440,8 @@ Bne R1, R3, -7     [21]    [24, 24]    []          []      [30]    not taken, mi
 We copied the original code, added only a few lines at the end of `main.py` to print the final
 registers and memory, and ran it on small programs. Its configuration is fixed in `main.py`
 (FP multiply 15 cycles, FP add 4, memory 5; R1 = 12, F20 = 3.0). Each program below is in
-`tomasulo-python/tests/bugN_*.txt` with that configuration, and
-[`compare_original.py`](tomasulo-python/verify/compare_original.py) prints the original's table
+`tests/bugN_*.txt` with that configuration, and
+[`compare_original.py`](o3-simulator/tomasulo-python/verify/compare_original.py) prints the original's table
 next to ours (Appendix D).
 
 | # | Program | Original code | Correct | Cause in the original code |
@@ -1521,15 +1524,15 @@ policies (which instruction goes first) are checked by the hand-computed tables 
 ## Appendix C. Verification
 
 The original code came with no tests. The scripts in
-[`verify/`](tomasulo-python/verify/) check the simulator from several sides; `run_all.sh` runs
+[`verify/`](o3-simulator/tomasulo-python/verify/) check the simulator from several sides; `run_all.sh` runs
 all of them and exits with status 1 if any fails.
 
 ### C.1 Functional reference
 
-[`reference.py`](tomasulo-python/verify/reference.py) runs the program one instruction at a
+[`reference.py`](o3-simulator/tomasulo-python/verify/reference.py) runs the program one instruction at a
 time, with no timing, renaming or speculation, on its own 256-byte memory (written again, not
 imported from the simulator). For every test, width and setting,
-[`check_all.py`](tomasulo-python/verify/check_all.py) requires the same final integer registers,
+[`check_all.py`](o3-simulator/tomasulo-python/verify/check_all.py) requires the same final integer registers,
 FP registers and memory bytes, and the same sequence of committed instructions. It shares only
 the input parser with the simulator.
 
@@ -1571,7 +1574,7 @@ C.1 and C.2 check that the output is consistent with the rules. They cannot tell
 was implemented differently from what we meant, for example "lowest station number" instead
 of "oldest". So for 7 small tests we computed the whole instruction table by hand at widths 1,
 2 and 4 before running the simulator on them: 19 tables in
-[`tests/golden/`](tomasulo-python/tests/golden/) (`squash_cdb` only at width 4).
+[`tests/golden/`](o3-simulator/tomasulo-python/tests/golden/) (`squash_cdb` only at width 4).
 `check_all.py` compares the printed tables with them.
 
 When the memory rule changed to "loads do not wait for stores with unknown addresses", we
@@ -1594,7 +1597,7 @@ Example, test case 7 (`loop`) at width 1 (Figure 25):
 
 ### C.4 Random programs
 
-[`fuzz.py`](tomasulo-python/verify/fuzz.py) generates programs of 3 to 35 instructions with
+[`fuzz.py`](o3-simulator/tomasulo-python/verify/fuzz.py) generates programs of 3 to 35 instructions with
 up to two counted loops, forward branches, loads and stores to a few overlapping addresses (some
 not multiples of 4), stores followed by loads of the same address through another base register
 whose value is computed late (so loads run ahead of stores and some are replayed), and values that
@@ -1607,7 +1610,7 @@ C.1 and C.2. In `results/fuzz.txt`: 2000 programs, 8000 runs, 0 failures.
 ### C.5 Mutation test
 
 A check is only useful if it fails when the code is wrong.
-[`mutants.py`](tomasulo-python/verify/mutants.py) copies the code, changes one line, and runs
+[`mutants.py`](o3-simulator/tomasulo-python/verify/mutants.py) copies the code, changes one line, and runs
 `check_all.py` and `fuzz.py` (300 programs) on the copy. All 25 mutants are caught
 (`results/mutants.txt`):
 
@@ -1650,7 +1653,7 @@ the case).
 
 ## Appendix D. Width 1 compared with the original code
 
-[`compare_original.py`](tomasulo-python/verify/compare_original.py) runs the original code (taken
+[`compare_original.py`](o3-simulator/tomasulo-python/verify/compare_original.py) runs the original code (taken
 from the repository history) and ours at width 1 on the five inputs the original can run
 (`results/compare_original.txt`). Every difference has one of these causes:
 

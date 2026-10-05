@@ -1,8 +1,8 @@
 #!/bin/bash
 # Regenerates results/: the output of every test input at issue widths 1-4,
 # the summary tables and the logs of the verification scripts; then checks
-# that the generated tables in REPORT.md are current. Exits with status 1 if
-# anything failed. Takes about two minutes. Needs Python 3 (standard library
+# that the generated parts of REPORT-o3-simulator.md (in the repository root)
+# are current. Exits with status 1 if anything failed. Takes about two minutes. Needs Python 3 (standard library
 # only) and git (compare_original.py reads the original code from the
 # repository history).
 cd "$(dirname "$0")" || exit 1
@@ -28,7 +28,7 @@ done
 (cd verify && python3 fuzz.py 2000 1) > results/fuzz.txt || fail "fuzz.py (see results/fuzz.txt)"
 (cd verify && python3 mutants.py) > results/mutants.txt || fail "mutants.py (see results/mutants.txt)"
 (cd verify && python3 compare_original.py) > results/compare_original.txt || fail "compare_original.py"
-(cd verify && python3 report_tables.py --check ../../REPORT.md) || fail "tables in REPORT.md"
+(cd verify && python3 report_tables.py --check ../../../REPORT-o3-simulator.md) || fail "generated parts of REPORT-o3-simulator.md"
 tail -n 1 results/check_all.txt results/fuzz.txt results/mutants.txt
 if [ "$status" -eq 0 ]; then echo "run_all.sh: all checks passed"; fi
 exit $status

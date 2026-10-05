@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Prints the result tables of REPORT.md (markdown) from the raw files in results/.
+# Prints the result tables of REPORT-branch-prediction.md (markdown) from the raw files in results/.
 # Usage, from cbp2-infrastructure-v2/:  python3 report_tables.py
 import re
 import sys

@@ -1,15 +1,16 @@
-# Writes the parts of REPORT.md that quote run results, from the simulator, so
-# the report cannot drift from the code: the paragraph of section 1.4 on one
-# CDB, the summary tables of 3.2 and the notes under them, the test cases
-# 3.3-3.10 and section 3.11. Every number in these parts is computed here.
-#   python3 report_tables.py                    summary tables (results/summary.md)
-#   python3 report_tables.py --check REPORT.md  exit 1 if a generated part of
-#                                               REPORT.md differs from what this
-#                                               script writes now
-#   python3 report_tables.py --write REPORT.md  rewrite those parts
+# Writes the parts of the report (REPORT-o3-simulator.md in the repository
+# root) that quote run results, from the simulator, so the report cannot drift
+# from the code: the paragraph of section 1.4 on one CDB, the summary tables of
+# 3.2 and the notes under them, the test cases 3.3-3.10 and section 3.11. Every
+# number in these parts is computed here.
+#   python3 report_tables.py                summary tables (results/summary.md)
+#   python3 report_tables.py --check FILE   exit 1 if a generated part of the
+#                                           report FILE differs from what this
+#                                           script writes now
+#   python3 report_tables.py --write FILE   rewrite those parts
 # A generated part sits between "<!-- BEGIN GENERATED: name -->" and
-# "<!-- END GENERATED: name -->". Numbers elsewhere in REPORT.md are written by
-# hand and not checked here.
+# "<!-- END GENERATED: name -->". Numbers elsewhere in the report are written
+# by hand and not checked here.
 
 import contextlib
 import glob
@@ -117,7 +118,8 @@ def test_cases():
     for number, name in enumerate(TEST_CASES, 1):
         comment, config, values, program = describe(test_path(name))
         out += ['### 3.%d Test case %d: `%s`' % (number + 2, number, name), '', comment, '',
-                'Configuration and initial values ([`tests/%s.txt`](tomasulo-python/tests/%s.txt)):' % (name, name),
+                'Configuration and initial values ([`tests/%s.txt`](o3-simulator/tomasulo-python/tests/%s.txt)):'
+                % (name, name),
                 '', '```text'] + config + [''] + values + ['```', '',
                 'Instructions (the number is the instruction index that branch offsets count from):',
                 '', '```text'] + ['%2d  %s' % (i, text) for i, text in enumerate(program)] + ['```', '']
@@ -161,7 +163,7 @@ GLUE = '\x00'
 
 
 def para(text):
-    """a paragraph wrapped like the rest of REPORT.md"""
+    """a paragraph wrapped like the rest of the report"""
     return textwrap.fill(text, width=95, break_long_words=False,
                          break_on_hyphens=False).replace(GLUE, ' ')
 
@@ -189,13 +191,13 @@ def consecutive(values):
     return values == list(range(values[0], values[0] + len(values)))
 
 
-# The three functions below write the passages of REPORT.md that quote run
+# The three functions below write the passages of the report that quote run
 # results; every number in them is computed here. The asserts check that the
 # results still fit the words around the numbers ("stays", "still gains", ...);
 # if they do not, --check and --write fail instead of writing a wrong sentence.
 
 def one_cdb_text():
-    """REPORT.md 1.4: how much one CDB limits a wider issue"""
+    """REPORT-o3-simulator.md 1.4: how much one CDB limits a wider issue"""
     wide, independent = cycles('wide', 1), cycles('independent', 1)
     wide4 = run('wide', 4, 1)
     together = max(Counter(e.exe[1] for e in wide4.committed).values())
@@ -212,7 +214,7 @@ def one_cdb_text():
 
 
 def summary_notes():
-    """REPORT.md 3.2: what the summary tables show"""
+    """REPORT-o3-simulator.md 3.2: what the summary tables show"""
     default = dict((n, cycles(n)) for n in ('wide', 'independent', 'daxpy', 'original', 'chain', 'loop'))
     helped = ('wide', 'independent', 'daxpy', 'original')
     assert all(default[n][-1] < default[n][0] for n in helped)
@@ -259,7 +261,7 @@ def summary_notes():
 
 
 def limits_text():
-    """REPORT.md 3.11: what limits the gain from a wider issue"""
+    """REPORT-o3-simulator.md 3.11: what limits the gain from a wider issue"""
     chain = [c for cdb, commit in ((None, None), (1, None), (1, 1)) for c in cycles('chain', cdb, commit)]
     assert len(set(chain)) == 1
     wide4 = run('wide', 4, 1)

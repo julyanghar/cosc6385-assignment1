@@ -1,8 +1,8 @@
 # Compares the original simulator (as first committed to this repository) with
 # ours at issue width 1, on the inputs the original can run: its hard-coded
 # configuration (the one in tests/original.txt), no Beq, no commas. Prints both
-# instruction tables side by side and marks the rows that differ; REPORT.md
-# explains every difference.
+# instruction tables side by side and marks the rows that differ;
+# REPORT-o3-simulator.md (Appendix D) explains every difference.
 # Usage: python3 compare_original.py
 
 import os

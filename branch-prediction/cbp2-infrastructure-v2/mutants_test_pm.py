@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Checks that src/test_pm.cc can fail: builds the appendix test against
-# deliberately broken copies of src/my_predictor.h, one per rule of REPORT.md,
+# deliberately broken copies of src/my_predictor.h, one per rule of REPORT-branch-prediction.md,
 # and prints how many appendix rows still match and whether the test failed.
 # Usage, from cbp2-infrastructure-v2/:  python3 mutants_test_pm.py
 import os

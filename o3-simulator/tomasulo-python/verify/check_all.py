@@ -5,8 +5,8 @@
 #   V1  final registers, memory and the committed instruction sequence equal
 #       those of the functional reference (reference.py)
 #   V2  the timing of every committed instruction obeys the model's rules
-#       (written again here from the rule table in REPORT.md, not taken from
-#       the simulator's code)
+#       (written again here from the rule tables in REPORT-o3-simulator.md,
+#       not taken from the simulator's code)
 #   V3  where tests/golden/<test>_w<N>.txt exists, the printed instruction
 #       table equals it exactly (hand-computed tables)
 #   V4  the printed registers and non-zero memory read back as the values the

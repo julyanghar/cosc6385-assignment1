@@ -9,4 +9,4 @@ How to run:
 cd code;
 python3 main.py [input file] [--width N]
 
-The input file format, the tests and the verification scripts are described in ../README.md.
+The input file format, the tests and the verification scripts are described in part 2 of ../../README.md.
